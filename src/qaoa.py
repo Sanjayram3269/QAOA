@@ -104,7 +104,9 @@ def _run_once(
     result = simulator.run(compiled, shots=shots, seed_simulator=seed).result()
     counts = result.get_counts(compiled)
     expected, best = _counts_to_cut_statistics(graph, counts)
-    return expected, best, compiled.depth(), compiled.count_ops().get("cx", 0)
+    two_qubit_gates = compiled.count_ops().get("cx", 0)
+
+    return expected, best, compiled.depth(), two_qubit_gates
 
 
 def _spsa(

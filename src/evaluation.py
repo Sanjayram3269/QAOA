@@ -38,6 +38,7 @@ def evaluate_graph(
             max_optimizer_evals=max_optimizer_evals,
         )
         record = asdict(result)
+        record["run_seed"] = record.pop("seed")
         record.update(
             {
                 "graph_id": graph_id,

@@ -45,12 +45,14 @@ def build_noise_model(condition_id: str) -> NoiseModel | None:
     """Build a deterministic, explicitly parameterized Aer noise model.
 
     N0 returns None so the simulator remains ideal. N1/N2 add depolarizing
-    noise to one- and two-qubit operations plus symmetric readout noise.
+    noise to the one- and two-qubit gates used by the QAOA circuit, plus
+    symmetric readout noise.
     """
     if condition_id not in NOISE_CONDITIONS:
         raise ValueError(f"Unknown noise condition: {condition_id}")
 
     condition = NOISE_CONDITIONS[condition_id]
+
     if condition_id == "N0":
         return None
 
@@ -58,15 +60,29 @@ def build_noise_model(condition_id: str) -> NoiseModel | None:
 
     if condition.single_qubit_error > 0:
         error_1q = depolarizing_error(condition.single_qubit_error, 1)
-        model.add_all_qubit_quantum_error(error_1q, ["x", "sx"])
+
+        model.add_all_qubit_quantum_error(
+            error_1q,
+            ["h", "rx", "x", "sx"],
+        )
 
     if condition.two_qubit_error > 0:
         error_2q = depolarizing_error(condition.two_qubit_error, 2)
-        model.add_all_qubit_quantum_error(error_2q, ["cx"])
+
+        model.add_all_qubit_quantum_error(
+            error_2q,
+            ["rzz", "cx"],
+        )
 
     p = condition.readout_error
+
     if p > 0:
-        readout = ReadoutError([[1 - p, p], [p, 1 - p]])
+        readout = ReadoutError(
+            [
+                [1 - p, p],
+                [p, 1 - p],
+            ]
+        )
         model.add_all_qubit_readout_error(readout)
 
     return model
