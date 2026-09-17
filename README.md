@@ -1,28 +1,80 @@
 # ML-Guided Resource- and Noise-Aware QAOA Configuration for Combinatorial Optimization
 
-NQComp-2027 research project.
+NQComp-2027 research project — quantum-side implementation.
 
-## Scope
+## Research scope
 
-This repository contains the quantum-side implementation for a study that evaluates whether machine learning can select an effective QAOA configuration for unseen Max-Cut graph instances under different execution conditions.
+We study whether ML can select an effective QAOA configuration for an unseen Max-Cut graph under a known execution condition.
 
-### Core problem
-- Problem: Max-Cut
+Core configuration space:
+- QAOA depth: `p ∈ {1,2,3}`
+- Classical optimizer: `COBYLA`, `SPSA`
+- Shots: `256`, `512`
+- Total candidates: `12`
+- Conditions: `N0` ideal, `N1` controlled moderate noise, `N2` controlled higher noise
 - Graph families: Erdős–Rényi and Random Regular
-- Graph size: approximately 10–20 vertices
-- QAOA depth: p = 1, 2, 3
-- Optimizers: COBYLA, SPSA
-- Shots: 256, 512
-- Execution conditions: ideal plus two controlled simulated-noise conditions
+- Graph sizes: approximately 10–20 vertices
 
-## Repository ownership
+## Repository structure
 
-- `src/graph_generation.py`, `src/maxcut.py`, `src/qaoa.py`, `src/noise.py`, `src/configurations.py`, and quantum experiment orchestration are owned by Sanjay.
-- ML feature extraction, model training, baselines, and statistical analysis are maintained in the ML branch by Neha.
+```text
+QAOA/
+├── config/
+│   └── experiment.yaml
+├── src/
+│   ├── configurations.py
+│   ├── graph_generation.py
+│   ├── maxcut.py
+│   ├── noise.py
+│   ├── qaoa.py
+│   └── evaluation.py
+├── scripts/
+│   └── smoke_test.py
+├── tests/
+│   └── test_quantum_foundation.py
+├── DATA_SCHEMA.md
+├── DECISIONS.md
+├── requirements.txt
+└── README.md
+```
 
-## Collaboration rule
+## Ownership
 
-`main` is the stable branch. Quantum and ML work should be developed on separate feature branches and integrated only through the agreed data contract.
+Sanjay owns graph generation, exact Max-Cut, QAOA, configuration registry, noise, and quantum experiment orchestration. Neha owns feature extraction, utility/oracle labels, RF/XGBoost, baselines, and ML analysis.
+
+## Local setup
+
+```bash
+git clone https://github.com/Sanjayram3269/QAOA.git
+cd QAOA
+git checkout feature/sanjay-quantum-foundation
+python -m venv .venv
+# Windows PowerShell:
+.venv\Scripts\Activate.ps1
+# macOS/Linux:
+# source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+## First validation
+
+Run unit tests:
+
+```bash
+pytest -q
+```
+
+Run the end-to-end smoke test:
+
+```bash
+python scripts/smoke_test.py
+```
+
+Do **not** start large experiments until the smoke test and unit tests pass locally.
+
+## Collaboration
+
+`main` is the stable branch. Quantum and ML work should remain on separate feature branches. The shared interface is documented in `DATA_SCHEMA.md`; methodology changes are recorded in `DECISIONS.md`.
 
 ## Status
 
