@@ -12,6 +12,7 @@ env/
 # Generated experiment data
 /data/raw/
 /data/processed/
+/data/results/
 /results/
 
 # Local logs
