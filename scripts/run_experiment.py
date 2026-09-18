@@ -5,8 +5,18 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
+import pandas as pd
+
 from src.evaluation import evaluate_graph, save_raw_results
-from src.graph_generation import build_manifest, generate_graph
+from src.graph_generation import GraphSpec, build_manifest, generate_graph
+
+
+def _optional_float(value) -> float | None:
+    return None if pd.isna(value) else float(value)
+
+
+def _optional_int(value) -> int | None:
+    return None if pd.isna(value) else int(value)
 
 
 def main() -> None:
@@ -20,33 +30,39 @@ def main() -> None:
 
     if args.smoke:
         manifest = build_manifest(
+            families=("erdos_renyi",),
             node_counts=(10,),
             instances_per_setting=1,
         )
-        manifest = manifest.iloc[:1]
-        noise_conditions = ("N0")
-        output_path = Path("data/results/smoke_results.csv")
+        noise_conditions = ("N0",)
+        run_seeds = (20000,)
+        max_circuit_executions = 10
+        output_path = Path(
+            "data/raw/batch_sanjay/smoke_results.csv"
+        )
     else:
-        manifest = build_manifest()
+        manifest = build_manifest(
+            instances_per_setting=5,
+            random_regular_degree=4,
+        )
         noise_conditions = ("N0", "N1", "N2")
-        output_path = Path("data/results/raw_results.csv")
+        run_seeds = (20000, 20001, 20002)
+        max_circuit_executions = 200
+        output_path = Path(
+            "data/raw/batch_sanjay/feasibility_results.csv"
+        )
 
     all_results = []
 
     for _, row in manifest.iterrows():
-        graph_spec = row.to_dict()
-
-        from src.graph_generation import GraphSpec
-
         spec = GraphSpec(
-            graph_id=graph_spec["graph_id"],
-            family=graph_spec["family"],
-            num_nodes=int(graph_spec["num_nodes"]),
-            seed=int(graph_spec["seed"]),
-            probability=graph_spec["probability"],
-            degree=graph_spec["degree"],
+            graph_id=str(row["graph_id"]),
+            family=str(row["family"]),
+            num_nodes=int(row["num_nodes"]),
+            seed=int(row["seed"]),
+            probability=_optional_float(row["probability"]),
+            degree=_optional_int(row["degree"]),
         )
-
         graph = generate_graph(spec)
 
         for noise_condition in noise_conditions:
@@ -56,18 +72,18 @@ def main() -> None:
                 graph_family=spec.family,
                 graph_seed=spec.seed,
                 noise_condition=noise_condition,
-                run_seed_start=20000,
+                run_seeds=run_seeds,
                 exact_max_nodes=20,
-                max_optimizer_evals=80,
+                max_circuit_executions=max_circuit_executions,
             )
             all_results.append(results)
-
-    import pandas as pd
 
     combined = pd.concat(all_results, ignore_index=True)
     save_raw_results(combined, output_path)
 
+    failed = int((combined["run_status"] != "success").sum())
     print(f"Wrote {len(combined)} rows to {output_path}")
+    print(f"Successful rows: {len(combined) - failed}; failed rows: {failed}")
 
 
 if __name__ == "__main__":
