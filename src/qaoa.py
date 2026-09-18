@@ -2,7 +2,7 @@
 
 The implementation intentionally avoids a high-level estimator API so that the
 experiment has explicit control over circuit construction, shots, noise, seeds,
-and optimizer evaluations.
+and measured circuit executions.
 """
 
 from __future__ import annotations
@@ -30,6 +30,8 @@ class QAOAResult:
     shots: int
     noise_condition: str
     optimizer_evaluations: int
+    circuit_executions: int
+    total_executed_shots: int
     two_qubit_gates: int
     circuit_depth: int
     simulator_runtime_seconds: float
@@ -77,8 +79,11 @@ def _counts_to_cut_statistics(
     n = graph.number_of_nodes()
 
     for bitstring, frequency in counts.items():
+        bitstring = bitstring.replace(" ", "")
         if len(bitstring) != n:
-            bitstring = bitstring.replace(" ", "")
+            raise RuntimeError(
+                f"Expected {n} measured bits, received {len(bitstring)}"
+            )
         # Qiskit displays classical bits as c[n-1] ... c[0].
         partition = [int(bitstring[n - 1 - node]) for node in range(n)]
         value = cut_value(graph, partition)
@@ -97,16 +102,25 @@ def _run_once(
     noise_condition: str,
     seed: int,
 ) -> tuple[float, int, int, int]:
+    """Execute one measured circuit and return quality/resource statistics."""
     circuit = build_qaoa_circuit(graph, depth, gamma, beta)
     noise_model = build_noise_model(noise_condition)
     simulator = AerSimulator(noise_model=noise_model)
     compiled = transpile(circuit, simulator, seed_transpiler=seed)
-    result = simulator.run(compiled, shots=shots, seed_simulator=seed).result()
+    result = simulator.run(
+        compiled,
+        shots=shots,
+        seed_simulator=seed,
+    ).result()
     counts = result.get_counts(compiled)
     expected, best = _counts_to_cut_statistics(graph, counts)
-    two_qubit_gates = compiled.count_ops().get("cx", 0)
 
-    return expected, best, compiled.depth(), two_qubit_gates
+    # Count every compiled two-qubit instruction, including RZZ and CX.
+    two_qubit_gates = sum(
+        1 for instruction in compiled.data if len(instruction.qubits) == 2
+    )
+
+    return expected, best, int(compiled.depth()), two_qubit_gates
 
 
 def _spsa(
@@ -115,20 +129,21 @@ def _spsa(
     max_evals: int,
     seed: int,
 ) -> tuple[np.ndarray, float, int]:
-    """Small SPSA implementation with exactly bounded objective evaluations."""
+    """Small SPSA implementation with a strict objective-evaluation bound."""
+    if max_evals < 1:
+        raise ValueError("SPSA requires at least one objective evaluation")
+
     rng = np.random.default_rng(seed)
     theta = initial.astype(float).copy()
     best_theta = theta.copy()
     best_value = objective(theta)
     evaluations = 1
+    iteration = 1
 
-    iterations = max(1, (max_evals - 1) // 2)
-    for k in range(1, iterations + 1):
-        if evaluations + 2 > max_evals:
-            break
+    while evaluations + 2 <= max_evals:
         delta = rng.choice([-1.0, 1.0], size=theta.shape)
-        ck = 0.10 / (k ** 0.101)
-        ak = 0.15 / ((k + 10) ** 0.602)
+        ck = 0.10 / (iteration**0.101)
+        ak = 0.15 / ((iteration + 10) ** 0.602)
 
         plus = theta + ck * delta
         minus = theta - ck * delta
@@ -136,16 +151,24 @@ def _spsa(
         y_minus = objective(minus)
         evaluations += 2
 
+        if y_plus < best_value:
+            best_value = y_plus
+            best_theta = plus.copy()
+        if y_minus < best_value:
+            best_value = y_minus
+            best_theta = minus.copy()
+
         gradient = (y_plus - y_minus) / (2.0 * ck) * delta
         theta = theta - ak * gradient
 
-        current = objective(theta)
-        evaluations += 1
-        if current < best_value:
-            best_value = current
-            best_theta = theta.copy()
-        if evaluations >= max_evals:
-            break
+        if evaluations < max_evals:
+            current = objective(theta)
+            evaluations += 1
+            if current < best_value:
+                best_value = current
+                best_theta = theta.copy()
+
+        iteration += 1
 
     return best_theta, best_value, evaluations
 
@@ -157,32 +180,48 @@ def run_qaoa(
     shots: int,
     noise_condition: str = "N0",
     seed: int = 0,
-    max_optimizer_evals: int = 80,
+    max_circuit_executions: int = 200,
 ) -> QAOAResult:
-    """Optimize and evaluate a QAOA configuration on one graph."""
+    """Optimize and evaluate one QAOA configuration.
+
+    The final measurement is included in the circuit-execution limit. At most
+    one fewer circuit is available to the optimizer, with one circuit reserved
+    for final evaluation.
+    """
     if depth < 1:
         raise ValueError("QAOA depth must be at least 1")
     if optimizer not in {"COBYLA", "SPSA"}:
         raise ValueError("Optimizer must be COBYLA or SPSA")
     if shots <= 0:
         raise ValueError("shots must be positive")
+    if max_circuit_executions < 2:
+        raise ValueError("At least two circuit executions are required")
 
     rng = np.random.default_rng(seed)
-    initial = np.concatenate([
-        rng.uniform(0.0, np.pi, depth),
-        rng.uniform(0.0, np.pi / 2.0, depth),
-    ])
+    initial = np.concatenate(
+        [
+            rng.uniform(0.0, np.pi, depth),
+            rng.uniform(0.0, np.pi / 2.0, depth),
+        ]
+    )
 
-    evaluations = 0
+    optimizer_evaluations = 0
+    optimizer_budget = max_circuit_executions - 1
 
     def objective(parameters: np.ndarray) -> float:
-        nonlocal evaluations
+        nonlocal optimizer_evaluations
         gamma = parameters[:depth]
         beta = parameters[depth:]
         expected, _, _, _ = _run_once(
-            graph, depth, gamma, beta, shots, noise_condition, seed + evaluations
+            graph,
+            depth,
+            gamma,
+            beta,
+            shots,
+            noise_condition,
+            seed + optimizer_evaluations,
         )
-        evaluations += 1
+        optimizer_evaluations += 1
         return -expected
 
     start = perf_counter()
@@ -191,18 +230,33 @@ def run_qaoa(
             objective,
             initial,
             method="COBYLA",
-            options={"maxiter": max_optimizer_evals, "rhobeg": 0.5},
+            options={"maxiter": optimizer_budget, "rhobeg": 0.5},
         )
         parameters = np.asarray(result.x, dtype=float)
     else:
-        parameters, _, _ = _spsa(objective, initial, max_optimizer_evals, seed)
+        parameters, _, _ = _spsa(
+            objective,
+            initial,
+            optimizer_budget,
+            seed,
+        )
 
     gamma = parameters[:depth]
     beta = parameters[depth:]
     expected, best_sampled, circuit_depth, two_qubit_gates = _run_once(
-        graph, depth, gamma, beta, shots, noise_condition, seed + 100000
+        graph,
+        depth,
+        gamma,
+        beta,
+        shots,
+        noise_condition,
+        seed + 100000,
     )
     runtime = perf_counter() - start
+
+    circuit_executions = optimizer_evaluations + 1
+    if circuit_executions > max_circuit_executions:
+        raise RuntimeError("Circuit-execution cap was exceeded")
 
     return QAOAResult(
         expected_cut=expected,
@@ -211,7 +265,9 @@ def run_qaoa(
         depth=depth,
         shots=shots,
         noise_condition=noise_condition,
-        optimizer_evaluations=evaluations,
+        optimizer_evaluations=optimizer_evaluations,
+        circuit_executions=circuit_executions,
+        total_executed_shots=shots * circuit_executions,
         two_qubit_gates=two_qubit_gates,
         circuit_depth=circuit_depth,
         simulator_runtime_seconds=runtime,
