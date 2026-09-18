@@ -1,0 +1,40 @@
+project:
+  name: nqcomp-2027-qaoa-ml-selector
+  problem: maxcut
+  seed: 20260917
+
+graphs:
+  families:
+    - erdos_renyi
+    - random_regular
+  node_counts: [10, 12, 15, 18, 20]
+  instances_per_setting: 10
+  er_probability: 0.35
+  random_regular_degree: 3
+
+qaoa:
+  depths: [1, 2, 3]
+  optimizers: [COBYLA, SPSA]
+  shots: [256, 512]
+  max_optimizer_evals: 80
+  spsa_a: 0.15
+  spsa_c: 0.10
+
+noise:
+  conditions:
+    N0:
+      enabled: false
+      description: ideal simulation
+    N1:
+      enabled: true
+      description: controlled moderate depolarizing/readout noise
+    N2:
+      enabled: true
+      description: controlled higher depolarizing/readout noise
+
+exact_solver:
+  max_nodes: 20
+
+reproducibility:
+  graph_seed_start: 10000
+  run_seed_start: 20000
