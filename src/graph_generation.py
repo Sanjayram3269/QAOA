@@ -70,7 +70,7 @@ def build_manifest(
     node_counts: Iterable[int] = (10, 12, 15, 18, 20),
     instances_per_setting: int = 10,
     er_probability: float = 0.35,
-    random_regular_degree: int = 3,
+    random_regular_degree: int = 4,
     seed_start: int = 10000,
 ) -> pd.DataFrame:
     """Create the authoritative graph manifest for an experiment batch."""
