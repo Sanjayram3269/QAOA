@@ -44,7 +44,7 @@ def test_evaluate_graph_returns_all_configs_for_each_paired_seed():
         noise_condition="N0",
         run_seeds=(1000, 1001),
         exact_max_nodes=20,
-        max_circuit_executions=2,
+        max_circuit_executions=10,
     )
 
     assert len(results) == 24
@@ -68,7 +68,7 @@ def test_evaluate_graph_returns_all_configs_for_each_paired_seed():
         results["total_executed_shots"]
         == results["shots_per_circuit"] * results["circuit_executions"]
     ).all()
-    assert (results["circuit_executions"] <= 2).all()
+    assert (results["circuit_executions"] <= 10).all()
     assert (results["two_qubit_gates"] > 0).all()
 
     assert results["expected_approximation_ratio"].between(0.0, 1.0).all()
