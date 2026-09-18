@@ -1,19 +1,32 @@
 # ML-Guided Resource- and Noise-Aware QAOA Configuration for Combinatorial Optimization
 
-NQComp-2027 research project — quantum-side implementation.
+NQComp-2027 research implementation.
 
 ## Research scope
 
-We study whether ML can select an effective QAOA configuration for an unseen Max-Cut graph under a known execution condition.
+The project studies whether machine learning can select an effective QAOA configuration for an unseen Max-Cut graph under known noise and resource conditions.
 
 Core configuration space:
-- QAOA depth: `p ∈ {1,2,3}`
-- Classical optimizer: `COBYLA`, `SPSA`
-- Shots: `256`, `512`
-- Total candidates: `12`
-- Conditions: `N0` ideal, `N1` controlled moderate noise, `N2` controlled higher noise
-- Graph families: Erdős–Rényi and Random Regular
-- Graph sizes: approximately 10–20 vertices
+
+- Depth: p in {1, 2, 3}
+- Optimizer: COBYLA or SPSA
+- Shots per circuit: 256 or 512
+- Twelve configurations: C01-C12
+- Noise: N0 ideal, N1 moderate, N2 higher simulated noise
+- Resource budgets: B256 and B512
+- Graph families: Erdos-Renyi and 4-regular random graphs
+- Graph sizes: 10, 12, 15, 18, and 20 vertices
+- Feasibility repetitions: paired seeds 20000, 20001, and 20002
+- Maximum resource use: 200 measured circuit executions per candidate
+
+## Branch workflow
+
+- `main` is stable.
+- Sanjay develops the quantum pipeline on quantum feature branches.
+- Neha develops features, utility, datasets, models, baselines, and analysis on ML feature branches.
+- Changes enter `main` through reviewed pull requests.
+- Shared interfaces are defined in `DATA_SCHEMA.md`.
+- Methodology decisions are recorded in `DECISIONS.md`.
 
 ## Repository structure
 
@@ -21,6 +34,11 @@ Core configuration space:
 QAOA/
 ├── config/
 │   └── experiment.yaml
+├── data/
+│   ├── graphs/
+│   ├── raw/
+│   ├── processed/
+│   └── splits/
 ├── src/
 │   ├── configurations.py
 │   ├── graph_generation.py
@@ -29,53 +47,61 @@ QAOA/
 │   ├── qaoa.py
 │   └── evaluation.py
 ├── scripts/
+│   ├── run_experiment.py
 │   └── smoke_test.py
 ├── tests/
-│   └── test_quantum_foundation.py
 ├── DATA_SCHEMA.md
 ├── DECISIONS.md
 ├── requirements.txt
 └── README.md
 ```
 
-## Ownership
-
-Sanjay owns graph generation, exact Max-Cut, QAOA, configuration registry, noise, and quantum experiment orchestration. Neha owns feature extraction, utility/oracle labels, RF/XGBoost, baselines, and ML analysis.
-
 ## Local setup
 
 ```bash
 git clone https://github.com/Sanjayram3269/QAOA.git
 cd QAOA
-git checkout feature/sanjay-quantum-foundation
 python -m venv .venv
-# Windows PowerShell:
+```
+
+Windows PowerShell:
+
+```powershell
 .venv\Scripts\Activate.ps1
-# macOS/Linux:
-# source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-## First validation
+macOS or Linux:
 
-Run unit tests:
+```bash
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+## Validation
+
+Run the unit tests:
 
 ```bash
 pytest -q
 ```
 
-Run the end-to-end smoke test:
+Run the smallest QAOA smoke test:
 
 ```bash
 python scripts/smoke_test.py
 ```
 
-Do **not** start large experiments until the smoke test and unit tests pass locally.
+Run the one-graph, all-configuration raw-record smoke experiment:
 
-## Collaboration
+```bash
+python scripts/run_experiment.py --smoke
+```
 
-`main` is the stable branch. Quantum and ML work should remain on separate feature branches. The shared interface is documented in `DATA_SCHEMA.md`; methodology changes are recorded in `DECISIONS.md`.
+The latter writes `data/raw/batch_sanjay/smoke_results.csv`. Do not start the 50-graph feasibility run until all tests and both smoke paths pass and every raw row reports `run_status=success`.
 
-## Status
+## Frozen quantum-to-ML contract
 
-Phase 0 — repository and quantum foundation setup.
+Each successful raw row records actual circuit executions and total executed shots. The primary quality is expected approximation ratio; best sampled ratio is secondary. B256/B512 cases are derived from the same raw evaluations, so resource conditioning does not create duplicate QAOA runs.
+
+See `DATA_SCHEMA.md` for the complete field list, aggregation, utility, leakage, and split rules.
