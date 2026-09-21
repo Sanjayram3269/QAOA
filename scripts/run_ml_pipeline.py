@@ -5,8 +5,14 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
+import sys
 
 import joblib
+
+# Make `python scripts/run_ml_pipeline.py` work from a fresh repository clone.
+REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
+if str(REPOSITORY_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPOSITORY_ROOT))
 
 from src.features import build_features_from_raw_results, build_ml_features
 from src.ml_dataset import build_ml_dataset, save_ml_dataset
@@ -38,7 +44,7 @@ def main() -> None:
     dataset.to_csv(output_dir / "ml_dataset.csv", index=False)
 
     graph_count = dataset["graph_id"].nunique()
-    if graph_count < 3 or dataset["oracle_config_id"].nunique() < 2:
+    if graph_count < 5 or dataset["oracle_config_id"].nunique() < 2:
         summary = {
             "status": "preparation_only",
             "raw_rows": int(len(raw)),
