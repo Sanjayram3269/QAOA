@@ -22,50 +22,32 @@ from src.graph_generation import (
 )
 
 
+# ============================================================
+# EXPERIMENT SETTINGS
+# ============================================================
+
+TOTAL_GRAPHS = 100
 N0_GRAPHS = 100
-NOISY_GRAPHS = 20
+NOISY_GRAPHS = 100
+
 NOISE_CONDITIONS = ("N1", "N2")
+
 RUN_SEED_START = 20000
 
+CONFIG_COUNT = 12
 
-def select_noisy_graphs(manifest: pd.DataFrame) -> pd.DataFrame:
-    """Select 20 representative graphs for N1/N2."""
 
-    selected = []
-
-    families = manifest["family"].unique()
-
-    for family in families:
-        family_df = manifest[
-            manifest["family"] == family
-        ]
-
-        for node_count in sorted(
-            family_df["num_nodes"].unique()
-        ):
-            subset = family_df[
-                family_df["num_nodes"] == node_count
-            ]
-
-            # Select two deterministic instances.
-            selected.append(subset.iloc[:2])
-
-    result = pd.concat(
-        selected,
-        ignore_index=True,
-    )
-
-    return result.head(NOISY_GRAPHS)
-
+# ============================================================
+# PARAMETER PARSING
+# ============================================================
 
 def parse_parameters(value) -> tuple[float, ...]:
-    """Convert CSV representation of optimal parameters back to floats."""
+    """Convert CSV representation of optimal parameters to floats."""
 
     if isinstance(value, (tuple, list)):
         return tuple(float(x) for x in value)
 
     text = str(value).strip()
-
     text = text.strip("()[]")
 
     if not text:
@@ -79,6 +61,10 @@ def parse_parameters(value) -> tuple[float, ...]:
         if x.strip()
     )
 
+
+# ============================================================
+# MAIN
+# ============================================================
 
 def main() -> None:
 
@@ -123,37 +109,41 @@ def main() -> None:
             "Batch size must be >= 1."
         )
 
-    # ---------------------------------------------------------
+    # ========================================================
     # MANIFEST
-    # ---------------------------------------------------------
+    # ========================================================
 
     if args.smoke:
 
         manifest = build_manifest(
-        node_counts=(10,),
-        instances_per_setting=1,
+            node_counts=(10,),
+            instances_per_setting=1,
         )
 
         manifest = manifest.iloc[:1]
 
         print("Running SMOKE TEST")
 
-        # Smoke test only validates the fast N0 pipeline.
         noise_conditions = ("N0",)
 
         output_path = Path(
             "data/results/smoke_results.csv"
-    )
+        )
 
     else:
 
+        # Authoritative 100-graph manifest.
         manifest = build_manifest()
+
+        if len(manifest) != TOTAL_GRAPHS:
+            raise RuntimeError(
+                f"Expected {TOTAL_GRAPHS} graphs, "
+                f"but manifest contains {len(manifest)}."
+            )
 
         if args.mode == "n0":
 
-            manifest = manifest.head(
-                N0_GRAPHS
-            )
+            manifest = manifest.head(N0_GRAPHS)
 
             noise_conditions = ("N0",)
 
@@ -163,9 +153,9 @@ def main() -> None:
 
         else:
 
-            manifest = select_noisy_graphs(
-                manifest
-            )
+            # IMPORTANT:
+            # N1/N2 now use ALL 100 graphs.
+            manifest = manifest.head(NOISY_GRAPHS)
 
             noise_conditions = NOISE_CONDITIONS
 
@@ -175,9 +165,9 @@ def main() -> None:
 
     total_graphs = len(manifest)
 
-    # ---------------------------------------------------------
-    # BATCH
-    # ---------------------------------------------------------
+    # ========================================================
+    # BATCH SELECTION
+    # ========================================================
 
     start_index = (
         (args.batch - 1)
@@ -202,21 +192,19 @@ def main() -> None:
         start_index:end_index
     ]
 
-    # ---------------------------------------------------------
+    # ========================================================
     # PROGRESS INFORMATION
-    # ---------------------------------------------------------
-
-    configs = 12
+    # ========================================================
 
     total_evaluations = (
         total_graphs
-        * configs
+        * CONFIG_COUNT
         * len(noise_conditions)
     )
 
     batch_evaluations = (
         len(batch_manifest)
-        * configs
+        * CONFIG_COUNT
         * len(noise_conditions)
     )
 
@@ -224,42 +212,60 @@ def main() -> None:
     print("=" * 70)
     print("NQComp 2027 — FAST QAOA EXPERIMENT")
     print("=" * 70)
+
     print(
-        f"Mode:                       {args.mode.upper()}"
+        f"Mode:                       "
+        f"{args.mode.upper()}"
     )
+
     print(
-        f"Total graphs:               {total_graphs}"
+        f"Total graphs:               "
+        f"{total_graphs}"
     )
+
     print(
         f"Graphs in this batch:       "
         f"{len(batch_manifest)}"
     )
+
     print(
-        f"Batch:                      {args.batch}"
+        f"Batch:                      "
+        f"{args.batch}"
     )
+
     print(
         f"Batch range:                "
-        f"G{start_index + 1:04d} → G{end_index:04d}"
+        f"G{start_index + 1:04d} → "
+        f"G{end_index:04d}"
     )
+
     print(
         f"Noise conditions:           "
         f"{', '.join(noise_conditions)}"
     )
+
     print(
         f"Evaluations this batch:     "
         f"{batch_evaluations}"
     )
+
+    print(
+        f"Total experiment evaluations:"
+        f" {total_evaluations}"
+    )
+
     print(
         f"Output:                     "
         f"{output_path}"
     )
+
     print("=" * 70)
 
     all_results = []
 
-    # ---------------------------------------------------------
+    # ========================================================
     # GRAPH LOOP
-    # ---------------------------------------------------------
+    # ========================================================
 
     for graph_position, (_, row) in enumerate(
         batch_manifest.iterrows(),
@@ -272,7 +278,11 @@ def main() -> None:
             num_nodes=int(row["num_nodes"]),
             seed=int(row["seed"]),
             probability=row["probability"],
-            degree=int(row["degree"]) if pd.notna(row["degree"]) else None,
+            degree=(
+                int(row["degree"])
+                if pd.notna(row["degree"])
+                else None
+            ),
         )
 
         graph = generate_graph(spec)
@@ -288,14 +298,15 @@ def main() -> None:
 
         graph_results = []
 
-        # -----------------------------------------------------
+        # ====================================================
         # N0
-        # -----------------------------------------------------
+        # ====================================================
 
         if args.mode == "n0":
 
             print(
-                "  N0 — optimizing 12 configurations..."
+                "  N0 — optimizing "
+                "12 configurations..."
             )
 
             results = evaluate_graph(
@@ -312,9 +323,9 @@ def main() -> None:
 
             graph_results.append(results)
 
-        # -----------------------------------------------------
-        # N1/N2
-        # -----------------------------------------------------
+        # ====================================================
+        # N1 / N2
+        # ====================================================
 
         else:
 
@@ -326,7 +337,8 @@ def main() -> None:
 
                 raise FileNotFoundError(
                     "N0 results not found. "
-                    "Run mode n0 first."
+                    "Upload/copy n0_results.csv to "
+                    "data/results/ before running N1/N2."
                 )
 
             n0_all = pd.read_csv(
@@ -352,6 +364,10 @@ def main() -> None:
                 "optimal_parameters"
             ].apply(parse_parameters)
 
+            # -----------------------------------------------
+            # N1 + N2
+            # -----------------------------------------------
+
             for noise_condition in noise_conditions:
 
                 print(
@@ -371,9 +387,9 @@ def main() -> None:
 
                 graph_results.append(results)
 
-        # -----------------------------------------------------
-        # SAVE GRAPH RESULTS
-        # -----------------------------------------------------
+        # ====================================================
+        # SAVE GRAPH RESULTS IN MEMORY
+        # ====================================================
 
         graph_df = pd.concat(
             graph_results,
@@ -405,56 +421,80 @@ def main() -> None:
             f"({percentage:.2f}%)"
         )
 
-    # ---------------------------------------------------------
-    # COMBINE BATCH
-    # ---------------------------------------------------------
+    # ========================================================
+    # COMBINE CURRENT BATCH
+    # ========================================================
 
     batch_results = pd.concat(
         all_results,
         ignore_index=True,
     )
 
-    # ---------------------------------------------------------
-    # SAVE RESULTS
-    # ---------------------------------------------------------
-    if args.smoke:
-        # Smoke tests must always produce a fresh file.
-        final_results = batch_results
-    else:
-        # Full experiments are resumable.
-        if output_path.exists():
-            existing = pd.read_csv(output_path)
+    # ========================================================
+    # SAVE / RESUME
+    # ========================================================
 
-            completed_graph_ids = set(
-                batch_results["graph_id"].astype(str)
+    if args.smoke:
+
+        final_results = batch_results
+
+    else:
+
+        if output_path.exists():
+
+            existing = pd.read_csv(
+                output_path
             )
 
+            completed_graph_ids = set(
+                batch_results[
+                    "graph_id"
+                ].astype(str)
+            )
+
+            # Remove previous rows for graphs
+            # being regenerated in this batch.
             existing = existing[
-                ~existing["graph_id"].astype(str).isin(
-                    completed_graph_ids
-                )
+                ~existing["graph_id"].astype(str)
+                .isin(completed_graph_ids)
             ]
 
             final_results = pd.concat(
-                [existing, batch_results],
+                [
+                    existing,
+                    batch_results,
+                ],
                 ignore_index=True,
             )
 
         else:
+
             final_results = batch_results
 
+    # ========================================================
+    # SORT
+    # ========================================================
+
     final_results = final_results.sort_values(
-    ["graph_id", "noise_condition", "config_id"]
+        [
+            "graph_id",
+            "noise_condition",
+            "config_id",
+        ]
     ).reset_index(drop=True)
 
+    # ========================================================
+    # WRITE CSV
+    # ========================================================
+
     save_raw_results(
-    final_results,
-    output_path,
+        final_results,
+        output_path,
     )
 
-    # ---------------------------------------------------------
+    # ========================================================
     # SUMMARY
-    # ---------------------------------------------------------
+    # ========================================================
 
     completed_graphs = (
         final_results[
@@ -467,38 +507,52 @@ def main() -> None:
     )
 
     expected_rows_per_graph = (
-    configs * len(noise_conditions)
+        CONFIG_COUNT
+        * len(noise_conditions)
     )
 
     completed_evaluations = (
-    completed_graphs * expected_rows_per_graph
+        completed_graphs
+        * expected_rows_per_graph
     )
 
     overall_percentage = (
-    completed_evaluations
-    / total_evaluations
-    * 100
+        completed_evaluations
+        / total_evaluations
+        * 100
     )
+
     print()
     print("=" * 70)
     print("BATCH COMPLETE")
     print("=" * 70)
+
     print(
         f"Graphs completed:          "
         f"{completed_graphs}/{total_graphs}"
     )
+
     print(
         f"Rows completed:            "
-        f"{completed_evaluations}/{total_evaluations}"
+        f"{completed_evaluations}/"
+        f"{total_evaluations}"
     )
+
+    print(
+        f"Actual CSV rows:           "
+        f"{completed_rows}"
+    )
+
     print(
         f"Progress:                  "
         f"{overall_percentage:.2f}%"
     )
+
     print(
         f"Output:                    "
         f"{output_path}"
     )
+
     print("=" * 70)
 
 
