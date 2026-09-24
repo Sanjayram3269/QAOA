@@ -38,8 +38,8 @@ def generate_graph(spec: GraphSpec) -> nx.Graph:
         if (spec.num_nodes * spec.degree) % 2:
             raise ValueError("n * degree must be even for a regular graph")
         graph = nx.random_regular_graph(
-            spec.degree,
-            spec.num_nodes,
+            d=int(spec.degree),
+            n=int(spec.num_nodes),
             seed=spec.seed,
         )
     else:
