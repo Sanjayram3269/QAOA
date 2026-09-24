@@ -26,6 +26,8 @@ from scipy.optimize import minimize
 from .maxcut import cut_value
 from .noise import build_noise_model
 
+import os
+
 
 @dataclass(frozen=True)
 class QAOAResult:
@@ -303,16 +305,21 @@ def run_qaoa(
     noise_model = build_noise_model(noise_condition)
 
     # Create simulator only once.
+    device = os.getenv("QAOA_DEVICE", "CPU").upper()
+
+    if device not in {"CPU", "GPU"}:
+        raise ValueError("QAOA_DEVICE must be CPU or GPU")
+
     if noise_model is None:
         simulator = AerSimulator(
         method="statevector",
-        device="GPU",
+        device=device,
     )
     else:
         simulator = AerSimulator(
         method="automatic",
         noise_model=noise_model,
-        device="GPU",
+        device=device,
     )
 
     # Transpile only once.
