@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import asdict
 from pathlib import Path
-from typing import Iterable
+from typing import Iterable, Sequence
 
 import networkx as nx
 import pandas as pd
@@ -101,10 +101,9 @@ def evaluate_graph(
     N0:
         Runs the normal QAOA optimizer.
 
-    N1/N2:
-        Also runs the normal optimizer when called directly. The experiment
-        runner uses evaluate_noisy_graph() so noisy conditions can reuse
-        parameters obtained from N0.
+    This function is also retained for direct noisy optimization if needed.
+    The main N1/N2 experiment should use evaluate_noisy_graph(), which
+    reuses parameters obtained from N0.
     """
 
     optimum, _ = exact_maxcut(
@@ -115,8 +114,6 @@ def evaluate_graph(
     if run_seeds is not None:
         seeds = tuple(run_seeds)
     elif run_seed_start is not None:
-    # One seed per graph/noise evaluation.
-    # Each of the 12 canonical configurations gets the same seed.
         seeds = (run_seed_start,)
     else:
         raise ValueError(
@@ -140,19 +137,42 @@ def evaluate_graph(
 
             rows.append(
                 _make_record(
-                    result,
-                    graph,
-                    graph_id,
-                    graph_family,
-                    graph_seed,
-                    noise_condition,
-                    config,
-                    optimum,
-                    run_seed,
+                    result=result,
+                    graph=graph,
+                    graph_id=graph_id,
+                    graph_family=graph_family,
+                    graph_seed=graph_seed,
+                    noise_condition=noise_condition,
+                    config=config,
+                    optimum=optimum,
+                    run_seed=run_seed,
                 )
             )
 
     return pd.DataFrame(rows)
+
+
+def _parse_parameters(parameters) -> tuple[float, ...]:
+    """Convert stored N0 optimal parameters into a numeric tuple."""
+
+    if isinstance(parameters, str):
+        cleaned = parameters.strip().strip("()[]")
+
+        if not cleaned:
+            return ()
+
+        return tuple(
+            float(x.strip())
+            for x in cleaned.split(",")
+            if x.strip()
+        )
+
+    if isinstance(parameters, (list, tuple)):
+        return tuple(float(x) for x in parameters)
+
+    raise TypeError(
+        f"Unsupported optimal_parameters type: {type(parameters)}"
+    )
 
 
 def evaluate_noisy_graph(
@@ -163,18 +183,65 @@ def evaluate_noisy_graph(
     noise_condition: str,
     n0_results: pd.DataFrame,
     exact_max_nodes: int = 20,
+    configs: Sequence | None = None,
+    run_seeds: Iterable[int] | None = None,
 ) -> pd.DataFrame:
     """
-    Evaluate fixed parameters from N0 under a noisy condition.
+    Evaluate the N0-optimized parameters under N1/N2 noise.
 
-    No optimizer is executed here. Each configuration requires exactly
-    one simulator execution.
+    IMPORTANT:
+        No optimizer is executed here.
+
+    For every N0 configuration supplied in n0_results, the exact same
+    optimal parameters are executed once under the requested noise
+    condition.
+
+    Expected N0 input:
+        12 rows for the current graph, one for each canonical configuration.
+
+    Optional configs/run_seeds arguments are accepted for compatibility with
+    older experiment-runner code, but the actual parameter source remains
+    n0_results.
     """
 
-    if noise_condition == "N0":
+    if noise_condition not in {"N1", "N2"}:
         raise ValueError(
             "evaluate_noisy_graph() is only for N1/N2."
         )
+
+    if n0_results is None or n0_results.empty:
+        raise ValueError(
+            f"No N0 results supplied for graph {graph_id}."
+        )
+
+    # Safety: only use N0 results belonging to this graph.
+    if "graph_id" in n0_results.columns:
+        n0_results = n0_results[
+            n0_results["graph_id"].astype(str) == str(graph_id)
+        ].copy()
+
+    if n0_results.empty:
+        raise ValueError(
+            f"No N0 rows found for graph {graph_id}."
+        )
+
+    # The canonical experiment has 12 configurations per graph.
+    if configs is None:
+        configs_by_id = {
+            config.config_id: config
+            for config in CONFIGURATIONS
+        }
+    else:
+        configs_by_id = {
+            config.config_id: config
+            for config in configs
+        }
+
+    allowed_seeds = (
+        set(int(seed) for seed in run_seeds)
+        if run_seeds is not None
+        else None
+    )
 
     optimum, _ = exact_maxcut(
         graph,
@@ -187,21 +254,26 @@ def evaluate_noisy_graph(
 
         config_id = str(n0_row["config_id"])
 
-        config = next(
-            c for c in CONFIGURATIONS
-            if c.config_id == config_id
-        )
-
-        parameters = n0_row["optimal_parameters"]
-
-        if isinstance(parameters, str):
-            parameters = tuple(
-                float(x.strip())
-                for x in parameters.strip("()[]").split(",")
-                if x.strip()
+        if config_id not in configs_by_id:
+            raise ValueError(
+                f"Unknown config_id '{config_id}' in N0 results."
             )
 
+        config = configs_by_id[config_id]
+
+        # Reuse only successful N0 results.
+        if "run_status" in n0_row.index:
+            if str(n0_row["run_status"]) != "success":
+                continue
+
         run_seed = int(n0_row["run_seed"])
+
+        if allowed_seeds is not None and run_seed not in allowed_seeds:
+            continue
+
+        parameters = _parse_parameters(
+            n0_row["optimal_parameters"]
+        )
 
         result = evaluate_qaoa_parameters(
             graph=graph,
@@ -210,20 +282,20 @@ def evaluate_noisy_graph(
             shots=config.shots,
             noise_condition=noise_condition,
             seed=run_seed,
-            parameters=tuple(parameters),
+            parameters=parameters,
         )
 
         rows.append(
             _make_record(
-                result,
-                graph,
-                graph_id,
-                graph_family,
-                graph_seed,
-                noise_condition,
-                config,
-                optimum,
-                run_seed,
+                result=result,
+                graph=graph,
+                graph_id=graph_id,
+                graph_family=graph_family,
+                graph_seed=graph_seed,
+                noise_condition=noise_condition,
+                config=config,
+                optimum=optimum,
+                run_seed=run_seed,
             )
         )
 
@@ -237,5 +309,12 @@ def save_raw_results(
     """Persist raw experiment results without index."""
 
     output = Path(path)
-    output.parent.mkdir(parents=True, exist_ok=True)
-    results.to_csv(output, index=False)
+    output.parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    results.to_csv(
+        output,
+        index=False,
+    )
