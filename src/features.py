@@ -5,16 +5,31 @@ from __future__ import annotations
 import networkx as nx
 import pandas as pd
 
+from .graph_generation import GraphSpec, generate_graph
 from .ml_dataset import BUDGETS
 
 
-# These are the only feature columns allowed as ML inputs.
 FEATURE_COLUMNS = [
     "graph_id",
     "graph_family",
     "num_nodes",
     "num_edges",
     "graph_seed",
+    "density",
+    "average_degree",
+    "degree_std",
+    "min_degree",
+    "max_degree",
+    "triangle_count",
+    "noise_condition",
+    "resource_budget",
+]
+
+# Identifiers remain in saved tables for traceability but are excluded from X.
+MODEL_FEATURE_COLUMNS = [
+    "graph_family",
+    "num_nodes",
+    "num_edges",
     "density",
     "average_degree",
     "degree_std",
@@ -35,30 +50,9 @@ def extract_graph_features(
     resource_budget: str,
 ) -> dict:
     """Extract graph and known-condition features before QAOA selection."""
-
     degrees = [degree for _, degree in graph.degree()]
-
-    if degrees:
-        average_degree = sum(degrees) / len(degrees)
-
-        if len(degrees) > 1:
-            degree_std = float(
-                pd.Series(degrees).std(ddof=0)
-            )
-        else:
-            degree_std = 0.0
-
-        min_degree = min(degrees)
-        max_degree = max(degrees)
-    else:
-        average_degree = 0.0
-        degree_std = 0.0
-        min_degree = 0
-        max_degree = 0
-
-    triangle_count = (
-        sum(nx.triangles(graph).values()) // 3
-    )
+    average_degree = sum(degrees) / len(degrees) if degrees else 0.0
+    degree_std = float(pd.Series(degrees).std(ddof=0)) if len(degrees) > 1 else 0.0
 
     return {
         "graph_id": graph_id,
@@ -69,57 +63,86 @@ def extract_graph_features(
         "density": nx.density(graph),
         "average_degree": average_degree,
         "degree_std": degree_std,
-        "min_degree": min_degree,
-        "max_degree": max_degree,
-        "triangle_count": triangle_count,
+        "min_degree": min(degrees) if degrees else 0,
+        "max_degree": max(degrees) if degrees else 0,
+        "triangle_count": sum(nx.triangles(graph).values()) // 3,
         "noise_condition": noise_condition,
         "resource_budget": resource_budget,
     }
 
 
-def build_graph_features(
-    results: pd.DataFrame,
-) -> pd.DataFrame:
-    """
-    Build one feature row per graph/noise/budget.
-
-    This function expects graph-level structural features to already
-    be present in the input DataFrame.
-    """
-
-    required = set(FEATURE_COLUMNS)
-
+def build_features_from_raw_results(results: pd.DataFrame) -> pd.DataFrame:
+    """Reconstruct frozen graphs and create one row per graph/noise/budget."""
+    required = {
+        "graph_id",
+        "graph_family",
+        "num_nodes",
+        "num_edges",
+        "graph_seed",
+        "noise_condition",
+    }
     missing = required - set(results.columns)
-
     if missing:
-        raise ValueError(
-            f"Missing required feature columns: {sorted(missing)}"
-        )
+        raise ValueError(f"Missing raw feature columns: {sorted(missing)}")
 
-    feature_rows = (
-        results[FEATURE_COLUMNS]
-        .drop_duplicates(
-            subset=[
-                "graph_id",
-                "graph_family",
-                "num_nodes",
-                "num_edges",
-                "graph_seed",
-                "noise_condition",
-                "resource_budget",
-            ]
+    graph_meta = results[
+        ["graph_id", "graph_family", "num_nodes", "num_edges", "graph_seed"]
+    ].drop_duplicates()
+    if graph_meta["graph_id"].duplicated().any():
+        raise ValueError("A graph_id has inconsistent graph metadata")
+
+    rows: list[dict] = []
+    for meta in graph_meta.itertuples(index=False):
+        spec = GraphSpec(
+            graph_id=str(meta.graph_id),
+            family=str(meta.graph_family),
+            num_nodes=int(meta.num_nodes),
+            seed=int(meta.graph_seed),
+            probability=0.35 if meta.graph_family == "erdos_renyi" else None,
+            degree=4 if meta.graph_family == "random_regular" else None,
         )
+        graph = generate_graph(spec)
+        if graph.number_of_edges() != int(meta.num_edges):
+            raise ValueError(
+                f"Reconstructed edge count mismatch for {meta.graph_id}: "
+                f"{graph.number_of_edges()} != {int(meta.num_edges)}"
+            )
+
+        noise_values = sorted(
+            results.loc[results["graph_id"] == meta.graph_id, "noise_condition"]
+            .dropna()
+            .unique()
+        )
+        for noise_condition in noise_values:
+            for resource_budget in BUDGETS:
+                rows.append(
+                    extract_graph_features(
+                        graph=graph,
+                        graph_id=str(meta.graph_id),
+                        graph_family=str(meta.graph_family),
+                        graph_seed=int(meta.graph_seed),
+                        noise_condition=str(noise_condition),
+                        resource_budget=resource_budget,
+                    )
+                )
+
+    return pd.DataFrame(rows, columns=FEATURE_COLUMNS)
+
+
+def build_graph_features(results: pd.DataFrame) -> pd.DataFrame:
+    """Deduplicate an already feature-enriched table."""
+    missing = set(FEATURE_COLUMNS) - set(results.columns)
+    if missing:
+        raise ValueError(f"Missing required feature columns: {sorted(missing)}")
+    return (
+        results[FEATURE_COLUMNS]
+        .drop_duplicates(subset=["graph_id", "noise_condition", "resource_budget"])
         .reset_index(drop=True)
     )
 
-    return feature_rows
 
-
-def validate_no_leakage(
-    features: pd.DataFrame,
-) -> None:
+def validate_no_leakage(features: pd.DataFrame) -> None:
     """Ensure post-execution/QAOA information is absent."""
-
     forbidden = {
         "config_id",
         "depth",
@@ -142,9 +165,7 @@ def validate_no_leakage(
         "oracle_quality",
         "oracle_cost",
     }
-
     leaked = forbidden.intersection(features.columns)
-
     if leaked:
         raise ValueError(
             "Data leakage detected. Forbidden columns present: "
@@ -157,71 +178,24 @@ def build_ml_features(
     labels: pd.DataFrame,
     graph_features: pd.DataFrame,
 ) -> pd.DataFrame:
-    """
-    Create the final leakage-safe ML dataset.
-
-    Parameters
-    ----------
-    aggregated:
-        Configuration-level QAOA aggregate results.
-
-    labels:
-        Oracle labels generated from the frozen utility.
-
-    graph_features:
-        Graph structural features generated before configuration selection.
-    """
-
+    """Join pre-selection features to oracle labels one-to-one."""
+    del aggregated  # Kept in the signature for compatibility with the handoff API.
     if labels.empty:
         raise ValueError("No oracle labels available")
-
     if graph_features.empty:
         raise ValueError("No graph features available")
 
-    # Validate graph features before joining anything with labels.
     validate_no_leakage(graph_features)
+    feature_key = ["graph_id", "noise_condition", "resource_budget"]
+    if graph_features.duplicated(subset=feature_key).any():
+        raise ValueError("Duplicate graph/noise/budget feature rows detected")
 
-    features = graph_features.copy()
-
-    # Make sure each graph/noise/budget combination occurs once.
-    feature_key = [
-        "graph_id",
-        "noise_condition",
-        "resource_budget",
-    ]
-
-    if features.duplicated(subset=feature_key).any():
-        raise ValueError(
-            "Duplicate graph/noise/budget feature rows detected"
-        )
-
-    # Check that every labelled example has a corresponding
-    # leakage-safe feature row.
-    labels_key = labels[feature_key].drop_duplicates()
-
-    missing = labels_key.merge(
-        features[feature_key],
-        on=feature_key,
-        how="left",
-        indicator=True,
-    )
-
-    missing = missing[
-        missing["_merge"] == "left_only"
-    ]
-
-    if not missing.empty:
-        raise ValueError(
-            "Missing graph features for labelled rows: "
-            f"{missing[feature_key].to_dict('records')}"
-        )
-
-    # Final ML table.
-    dataset = features.merge(
+    dataset = graph_features.merge(
         labels,
         on=feature_key,
         how="inner",
         validate="one_to_one",
     )
-
+    if len(dataset) != len(labels):
+        raise ValueError("Some oracle labels do not have leakage-safe feature rows")
     return dataset

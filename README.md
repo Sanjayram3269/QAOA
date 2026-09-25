@@ -41,13 +41,19 @@ QAOA/
 │   └── splits/
 ├── src/
 │   ├── configurations.py
+│   ├── evaluation.py
+│   ├── features.py
 │   ├── graph_generation.py
 │   ├── maxcut.py
+│   ├── ml_dataset.py
+│   ├── ml_selector.py
 │   ├── noise.py
 │   ├── qaoa.py
-│   └── evaluation.py
+│   ├── splitting.py
+│   └── validation.py
 ├── scripts/
 │   ├── run_experiment.py
+│   ├── run_ml_pipeline.py
 │   └── smoke_test.py
 ├── tests/
 ├── DATA_SCHEMA.md
@@ -99,6 +105,30 @@ python scripts/run_experiment.py --smoke
 ```
 
 The latter writes `data/raw/batch_sanjay/smoke_results.csv`. Do not start the 50-graph feasibility run until all tests and both smoke paths pass and every raw row reports `run_status=success`.
+
+## ML selector
+
+Prepare and validate the smoke handoff:
+
+```bash
+python scripts/run_ml_pipeline.py \
+  --input data/raw/batch_sanjay/smoke_results.csv \
+  --output-dir data/processed/ml_selector
+```
+
+For the one-graph smoke file, the command validates the contract and builds aggregate results, oracle labels, reconstructed graph features, and the two budget-conditioned ML examples. Training is intentionally skipped because graph-level splitting is impossible with one graph.
+
+Run the same command with `feasibility_results.csv` after the 5,400-run experiment completes. It will then:
+
+1. split the 50 unique graphs 70/15/15 with seed 2027;
+2. compare a Random Forest with multinomial logistic regression on validation utility regret;
+3. mask budget-infeasible configurations at prediction time;
+4. refit the selected model on train plus validation graphs;
+5. evaluate once on the untouched test graphs;
+6. compare against the condition-aware global-best baseline; and
+7. save predictions, metrics, graph assignments, and the fitted model.
+
+Graph identifiers and generation seeds are retained for traceability but are not model inputs. No QAOA outcome, exact optimum, oracle value, resource measurement, or configuration field enters the selector.
 
 ## Frozen quantum-to-ML contract
 
