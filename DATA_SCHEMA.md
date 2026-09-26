@@ -1,100 +1,281 @@
-# Data Schema
+DATA_SCHEMA.md
+# NQComp 2027 — Data Schema
 
-This document is the frozen interface between Sanjay's quantum pipeline and Neha's ML pipeline.
+## 1. Purpose
 
-## Raw record grain
+This document defines the structure and interpretation of the raw QAOA experimental result data.
 
-One raw row represents one unique:
-
-```text
-(graph_id, config_id, noise_condition, run_seed)
-```
-
-Resource-budget cases are derived during label construction. They do not create additional QAOA runs:
-
-- **B256:** only configurations with `shots_per_circuit <= 256` are feasible.
-- **B512:** configurations with `shots_per_circuit <= 512` are feasible.
-
-## Required raw fields
-
-| Field | Type | Meaning |
-|---|---|---|
-| experiment_id | string | `G0001_C01_N0_S20000` style unique identifier |
-| graph_id | string | Stable graph identifier |
-| graph_family | string | `erdos_renyi` or `random_regular` |
-| num_nodes | int | Number of vertices |
-| num_edges | int | Number of edges |
-| graph_seed | int | Graph-generation seed |
-| noise_condition | string | N0, N1, or N2 |
-| config_id | string | Frozen ID C01-C12 |
-| depth | int | QAOA depth |
-| optimizer | string | COBYLA or SPSA |
-| shots_per_circuit | int | 256 or 512 |
-| expected_cut | float/null | Expected cut from the final measured distribution |
-| best_sampled_cut | int/null | Highest observed sampled cut |
-| exact_optimum | int | Exact Max-Cut optimum |
-| expected_approximation_ratio | float/null | `expected_cut / exact_optimum` |
-| best_sampled_approximation_ratio | float/null | `best_sampled_cut / exact_optimum` |
-| optimizer_evaluations | int/null | Objective circuits used during optimization |
-| circuit_executions | int/null | Optimizer evaluations plus final evaluation |
-| total_executed_shots | int/null | `shots_per_circuit * circuit_executions` |
-| two_qubit_gates | int/null | All two-qubit instructions in the final compiled circuit |
-| circuit_depth | int/null | Final compiled circuit depth |
-| simulator_runtime_seconds | float/null | Simulator wall-clock runtime |
-| run_seed | int | Paired repetition seed |
-| run_status | string | `success` or `failed` |
-| failure_reason | string | Empty on success; diagnostic text on failure |
-| schema_version | string | Contract version, initially `1.0` |
-
-`optimal_parameters` may be retained as an optional diagnostic field. It is never an ML input.
-
-## Seed aggregation
-
-Feasibility experiments use three paired seeds: 20000, 20001, and 20002. All configurations for the same graph and noise condition use the same seed set.
-
-Aggregate successful rows by:
+Canonical raw files:
 
 ```text
-(graph_id, config_id, noise_condition)
+data/results/n0_results.csv
+data/results/noisy_results.csv
 ```
 
-The primary quality is the mean `expected_approximation_ratio`. Best-sampled quality is secondary because it frequently reaches the exact optimum even when expected performance differs.
+Raw files contain per-evaluation observations and are treated as immutable experimental artifacts after a snapshot is frozen.
 
-The primary cost is mean `total_executed_shots`.
+## 2. Raw Observation
 
-## Utility and labels
-
-The frozen primary utility is:
+The raw experiment records one observation for:
 
 ```text
-Q_norm = mean expected_approximation_ratio
-C_norm = min(mean total_executed_shots / 102400, 1)
-U = 0.8 * Q_norm - 0.2 * C_norm
+graph × QAOA configuration × run seed × noise condition
 ```
 
-Sensitivity analysis uses alpha values 0.6, 0.7, 0.8, and 0.9.
+For N0 the condition is ideal/noiseless.
 
-For each `(graph_id, noise_condition, resource_budget)`, choose the highest-utility feasible candidate. Candidates within 0.005 utility of the maximum are practically tied. Break practical ties by:
+For N1/N2 the corresponding noise condition is explicitly recorded.
 
-1. Lower mean total executed shots
-2. Lower depth
-3. Fewer shots per circuit
-4. Lexicographically smaller configuration ID
+## 3. Configuration Dimensions
 
-## Leakage rule
+The frozen configuration registry contains 12 configurations:
 
-The ML selector may use only information available before configuration selection:
+```text
+depth ∈ {1, 2, 3}
+optimizer ∈ {COBYLA, SPSA}
+shots ∈ {256, 512}
+```
 
-- Graph features
-- Known noise condition
-- Declared resource budget
+The configuration IDs are C01-C12.
 
-Forbidden ML inputs include configuration fields, QAOA outcomes, exact optimum, utility, oracle label, runtime, circuit counts, and all post-execution measurements.
+## 4. Seeds
 
-## Split rule
+The current frozen dataset uses two run seeds per graph/configuration/condition.
 
-Split unique graphs 70/15/15 using split seed 2027, balanced by graph family and size where feasible, before expanding noise, budget, configuration, or seed rows. No graph may occur in more than one split.
+Therefore:
 
-## Immutability and failures
+```text
+12 configurations × 2 seeds = 24 rows
+```
 
-Raw files are immutable after generation. Corrections create a new dataset/schema version. Failed rows remain in the raw data with `run_status=failed`; they are not silently deleted or converted into successful observations.
+per graph and condition.
+
+No three-seed claim should be made for the current raw dataset.
+
+## 5. Dataset Coverage
+
+### N0
+
+```text
+100 graphs
+G0001 → G0100
+12 configurations
+2 seeds
+2400 rows
+```
+
+### N1
+
+```text
+89 graphs
+G0001 → G0089
+12 configurations
+2 seeds
+2136 rows
+```
+
+### N2
+
+```text
+89 graphs
+G0001 → G0089
+12 configurations
+2 seeds
+2136 rows
+```
+
+Combined raw data:
+
+```text
+6672 rows
+```
+
+## 6. Current Missing Coverage
+
+The noisy dataset does not currently contain N1/N2 observations for:
+
+```text
+G0090 → G0100
+```
+
+These graphs are not treated as failures or zero-performance observations.
+
+They are simply outside the current noisy dataset snapshot.
+
+## 7. Core Raw Fields
+
+The current schema includes fields representing:
+
+### Identification
+- experiment_id
+- graph_id
+- graph_family
+- graph_seed
+- schema_version
+
+### Graph structure
+- num_nodes
+- num_edges
+
+### QAOA configuration
+- config_id
+- depth
+- optimizer
+- shots_per_circuit
+
+### Experimental condition
+- noise_condition
+- run_seed
+
+### Quality
+- expected_cut
+- best_sampled_cut
+- exact_optimum
+- expected_approximation_ratio
+- best_sampled_approximation_ratio
+
+### Resource/execution
+- optimizer_evaluations
+- circuit_executions
+- total_executed_shots
+- two_qubit_gates
+- circuit_depth
+- simulator_runtime_seconds
+
+### Run state
+- run_status
+- failure_reason
+
+`optimal_parameters` may be retained as a diagnostic field but is not an ML input.
+
+## 8. Approximation Ratio
+
+The primary QAOA quality quantity is expected approximation ratio:
+
+```text
+expected_approximation_ratio
+=
+expected_cut / exact_optimum
+```
+
+Best sampled approximation ratio is retained as a secondary descriptive metric.
+
+## 9. Seed Aggregation
+
+When ML preprocessing aggregates repeated runs, aggregation should occur after separating:
+
+```text
+graph_id
+config_id
+noise_condition
+```
+
+The raw two-seed observations must remain available and unchanged.
+
+The aggregation rule must be documented by the ML preprocessing implementation.
+
+## 10. Resource Budgets
+
+If resource-budget labels are derived, they must be constructed from the measured raw execution data rather than creating duplicate QAOA runs.
+
+Budget definitions must be consistent with the frozen experiment decisions.
+
+## 11. ML Leakage Policy
+
+The ML selector can use only information available before selecting a configuration for the target graph.
+
+Allowed categories include:
+- graph features
+- known noise condition
+- declared resource constraint
+
+Forbidden leakage sources include:
+- target graph QAOA performance
+- exact optimum of the target graph
+- configuration outcome metrics
+- utility calculated from target-graph outcomes
+- runtime measured after executing a target configuration
+- post-execution measurements
+
+## 12. Graph-Level Splitting
+
+The split unit is the graph.
+
+A graph must occur in only one of:
+
+```text
+TRAIN
+VALIDATION
+TEST
+```
+
+All available observations for the same graph must remain in that same split.
+
+This rule applies across N0, N1, N2, configurations, and seeds.
+
+## 13. Derived ML Data
+
+Derived data must be stored separately from the raw results.
+
+Recommended location:
+
+```text
+data/ml/
+```
+
+Examples:
+
+```text
+data/ml/features.csv
+data/ml/targets.csv
+data/ml/predictions.csv
+```
+
+Do not overwrite the raw experimental CSV files.
+
+## 14. Integrity Checks
+
+Before ML processing, verify:
+
+```text
+N0 = 2400 rows, 100 graphs
+N1 = 2136 rows, 89 graphs
+N2 = 2136 rows, 89 graphs
+```
+
+Also verify:
+- N1 and N2 cover the same 89 graph IDs
+- each noisy graph has 48 rows total
+- each condition has 24 rows per graph
+- no unexpected duplicate `(graph_id, config_id, noise_condition, run_seed)` keys exist
+- run_status values are valid
+- required fields are present
+
+## 15. Missing Data Policy
+
+A missing graph/condition is not automatically a failed experiment.
+
+For the current snapshot, G0090-G0100 are outside N1/N2 coverage.
+
+ML analyses requiring noisy labels must either:
+- operate on the 89 available noisy graphs, or
+- use a later dataset version that includes the additional noisy evaluations.
+
+The selected policy must be stated in the analysis.
+
+## 16. Versioning
+
+Raw data corrections or extensions should create a new explicit dataset version.
+
+Do not silently edit old experimental rows.
+
+## 17. Reproducibility
+
+The raw data should remain traceable to:
+- graph manifest
+- graph-generation seeds
+- configuration registry
+- run seeds
+- noise model
+- experiment runner
+- code revision
