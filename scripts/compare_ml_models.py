@@ -95,10 +95,20 @@ def selector_results(model, test):
         selected["oracle_approximation_ratio"]
         - selected["selected_actual_approximation_ratio"]
     )
-    selected["oracle_config_id"] = test.loc[oracle_idx, ["graph_id", "noise_condition", "config_id"]].set_index(
-        ["graph_id", "noise_condition"]
-    ).reindex(pd.MultiIndex.from_frame(selected[["graph_id", "noise_condition"]])).values
-    selected["selected_is_oracle"] = selected["config_id"].eq(selected["oracle_config_id"])
+    oracle_configs = test.loc[
+    oracle_idx,
+    ["graph_id", "noise_condition", "config_id"]
+    ].rename(columns={"config_id": "oracle_config_id"})
+
+    selected = selected.merge(
+    oracle_configs,
+    on=["graph_id", "noise_condition"],
+    how="left"
+    )
+
+    selected["selected_is_oracle"] = (
+    selected["config_id"] == selected["oracle_config_id"]
+    )
     return selected
 
 

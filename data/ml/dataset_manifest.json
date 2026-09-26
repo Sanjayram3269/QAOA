@@ -1,0 +1,19 @@
+{
+  "raw_files": [
+    "data/results/n0_results.csv",
+    "data/results/noisy_results.csv"
+  ],
+  "raw_rows": 6672,
+  "graph_count": 100,
+  "performance_rows": 3336,
+  "config_count": 12,
+  "noise_conditions": [
+    "N0",
+    "N1",
+    "N2"
+  ],
+  "target": "mean_expected_approximation_ratio",
+  "seed_aggregation": "mean over run_seed; std retained",
+  "target_graph_outcomes_used_as_features": false,
+  "raw_files_modified": false
+}

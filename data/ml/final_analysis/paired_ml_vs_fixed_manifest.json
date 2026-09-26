@@ -1,0 +1,10 @@
+{
+  "test_graphs": 14,
+  "paired_observations": 42,
+  "fixed_configuration": "C06",
+  "fixed_configuration_selected_from": "TRAIN",
+  "model_selection_changed": false,
+  "test_tuning_performed": false,
+  "paired_test": "Wilcoxon signed-rank",
+  "confidence_interval": "95% normal approximation for paired differences"
+}

@@ -1,0 +1,25 @@
+{
+  "seed": 2027,
+  "features": [
+    "depth",
+    "shots",
+    "num_nodes",
+    "num_edges",
+    "density",
+    "optimizer",
+    "graph_family",
+    "noise_condition",
+    "config_id"
+  ],
+  "target": "mean_expected_approximation_ratio",
+  "selection_metric": "validation_rmse",
+  "selected_model": "random_forest",
+  "train_graphs": 62,
+  "validation_graphs": 13,
+  "test_graphs": 14,
+  "final_test_metrics": {
+    "mae": 0.03218077689495849,
+    "rmse": 0.04036241874712239,
+    "r2": 0.26779483030174
+  }
+}

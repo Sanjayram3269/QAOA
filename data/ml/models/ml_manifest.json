@@ -1,0 +1,31 @@
+{
+  "model": "RandomForestRegressor",
+  "n_estimators": 300,
+  "random_state": 2027,
+  "min_samples_leaf": 2,
+  "features": [
+    "depth",
+    "shots",
+    "num_nodes",
+    "num_edges",
+    "density",
+    "optimizer",
+    "graph_family",
+    "noise_condition",
+    "config_id"
+  ],
+  "target": "mean_expected_approximation_ratio",
+  "train_graphs": 62,
+  "validation_graphs": 13,
+  "test_graphs": 14,
+  "validation_metrics": {
+    "mae": 0.04047297126579807,
+    "rmse": 0.05066207019399757,
+    "r2": 0.11434987880331093
+  },
+  "test_metrics": {
+    "mae": 0.030518059850653215,
+    "rmse": 0.03793169089376094,
+    "r2": 0.35332982850256456
+  }
+}

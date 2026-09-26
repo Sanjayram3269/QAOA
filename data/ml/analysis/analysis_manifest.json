@@ -1,0 +1,10 @@
+{
+  "test_graphs": 14,
+  "test_graph_condition_pairs": 42,
+  "confidence_level": 0.95,
+  "ci_method": "normal_approximation_over_graph_condition_observations",
+  "z_value": 1.96,
+  "model_selection_frozen_before_analysis": true,
+  "no_training_or_tuning_performed": true,
+  "seed": 2027
+}

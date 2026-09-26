@@ -1,0 +1,18 @@
+{
+  "test_graphs": 14,
+  "test_graph_condition_pairs": 42,
+  "analysis_type": "post_selection_frozen_test_analysis",
+  "model_retrained": false,
+  "model_tuned": false,
+  "test_used_for_model_selection": false,
+  "paired_test": "Wilcoxon signed-rank",
+  "confidence_interval": "95% normal approximation for paired differences",
+  "outputs": [
+    "per_graph_test_results.csv",
+    "paired_ml_vs_oracle_statistics.csv",
+    "ml_vs_fixed_summary.csv",
+    "graph_level_summary.csv",
+    "ml_vs_oracle_test_graphs.png",
+    "ml_vs_oracle_noise_conditions.png"
+  ]
+}
