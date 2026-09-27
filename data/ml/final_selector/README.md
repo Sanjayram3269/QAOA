@@ -53,5 +53,5 @@ historical reproduction.
 - `test_selected_configurations.csv`: paired case-level test decisions.
 - `test_summary.csv`: overall, budget, noise, and budget-by-noise summaries.
 - `test_graph_clustered_statistics.csv`: graph-level uncertainty and tests.
-- `test_method_comparison.png`: paper-ready method comparison.
-- `validation_permutation_importance.png`: paper-ready importance plot.
+- `test_method_comparison.svg`: paper-ready method comparison.
+- `validation_permutation_importance.svg`: paper-ready importance plot.
