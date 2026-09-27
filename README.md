@@ -603,3 +603,24 @@ https://github.com/Sanjayram3269/QAOA
 Project focus:
 
 **QAOA benchmarking + noise-aware evaluation + ML-based QAOA configuration selection**
+
+
+---
+
+## 26. Final Resource-Aware ML Selector
+
+The finalized ML analysis is documented in [ML_SELECTOR_METHOD.md](ML_SELECTOR_METHOD.md).
+It preserves the frozen 62/13/14 graph split, adds deterministic graph-structure
+features, selects the model using validation selection regret, and evaluates
+B256/B512 shots-per-circuit feasibility budgets against training-only fixed,
+random-expectation, and oracle references.
+
+Reproduce the complete analysis with:
+
+```bash
+python scripts/finalize_ml_selector.py
+```
+
+Versioned outputs, graph-clustered statistics, and paper-ready SVG figures are
+stored in `data/ml/final_selector/`. The final script does not read or modify
+the canonical raw QAOA CSVs.
