@@ -162,9 +162,9 @@ def main() -> None:
         frame.to_csv(args.output_dir / filename, index=False)
 
     if not args.no_plots:
-        save_method_plot(summary, args.output_dir / "test_method_comparison.png")
+        save_method_plot(summary, args.output_dir / "test_method_comparison.svg")
         save_importance_plot(
-            importance, args.output_dir / "validation_permutation_importance.png"
+            importance, args.output_dir / "validation_permutation_importance.svg"
         )
 
     overall = summary.loc[summary["scope"] == "ALL"].iloc[0]
