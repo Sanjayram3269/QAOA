@@ -22,3 +22,10 @@ jobs:
         run: python -m pip install -r requirements.txt
       - name: Run tests
         run: python -m pytest -q
+      - name: Reproduce ML selector
+        run: >-
+          python scripts/finalize_ml_selector.py
+          --output-dir /tmp/qaoa-final-selector
+          --permutation-repetitions 2
+          --bootstrap-repetitions 200
+          --no-plots

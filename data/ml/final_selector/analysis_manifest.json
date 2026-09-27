@@ -1,0 +1,70 @@
+{
+  "analysis": "resource-aware QAOA configuration selector",
+  "seed": 2027,
+  "input": "data/ml/splits/ml_performance_common.csv",
+  "input_sha256": "417b197035ba0eca773804a25cb7344d30cd0a7eefd1e40139e060ddf8dc6f96",
+  "raw_qaoa_files_modified": false,
+  "target": "mean_expected_approximation_ratio",
+  "split_unit": "graph_id",
+  "split_graph_counts": {
+    "train": 62,
+    "validation": 13,
+    "test": 14
+  },
+  "budget_definition": {
+    "B256": "configuration shots per circuit <= 256",
+    "B512": "configuration shots per circuit <= 512"
+  },
+  "model_selection_partition": "validation only",
+  "model_selection_metric": "mean selection regret across validation graph/noise/budget cases",
+  "selected_model": "extra_trees",
+  "selected_feature_set": [
+    "depth",
+    "shots",
+    "num_nodes",
+    "num_edges",
+    "density",
+    "average_degree",
+    "degree_std",
+    "min_degree",
+    "max_degree",
+    "triangle_count",
+    "average_clustering",
+    "transitivity",
+    "component_count",
+    "largest_component_fraction",
+    "spectral_radius",
+    "adjacency_spectral_gap",
+    "algebraic_connectivity",
+    "laplacian_spectral_radius",
+    "triangle_density",
+    "degree_assortativity",
+    "average_shortest_path_length",
+    "diameter",
+    "optimizer",
+    "config_id",
+    "graph_family",
+    "noise_condition"
+  ],
+  "final_fit_partition": "train + validation",
+  "test_evaluation_policy": "one frozen evaluation after model and features were selected",
+  "test_row_prediction_metrics": {
+    "mae": 0.028216071965530266,
+    "rmse": 0.03598462391767636,
+    "r2": 0.41801423842047924
+  },
+  "test_selector_metrics": {
+    "ml_mean": 0.7022283078825987,
+    "fixed_mean": 0.7009595877315616,
+    "random_expected_mean": 0.6891339015505997,
+    "oracle_mean": 0.7243513088582523,
+    "ml_minus_fixed": 0.001268720151037152,
+    "relative_gain_percent": 0.18099761715835452,
+    "mean_regret": 0.02212300097565339,
+    "oracle_selection_accuracy": 0.17857142857142858,
+    "oracle_top3_accuracy": 0.5833333333333334
+  },
+  "inference_unit": "graph_id",
+  "bootstrap_repetitions": 10000,
+  "permutation_importance_repetitions": 30
+}
