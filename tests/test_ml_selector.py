@@ -73,10 +73,10 @@ def test_selection_respects_shots_per_circuit_budget() -> None:
 def test_fixed_baseline_is_learned_from_training_rows_only() -> None:
     data = pd.DataFrame(
         {
-            "noise_condition": ["N0", "N0", "N0", "N0"],
-            "config_id": ["C01", "C02", "C01", "C02"],
-            "shots": [256, 256, 512, 512],
-            TARGET: [0.8, 0.7, 0.8, 0.9],
+            "noise_condition": ["N0", "N0"],
+            "config_id": ["C01", "C02"],
+            "shots": [256, 512],
+            TARGET: [0.8, 0.9],
         }
     )
     choices = fixed_baseline_choices(data).set_index("budget")
