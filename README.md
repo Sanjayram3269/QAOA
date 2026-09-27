@@ -1,7 +1,6 @@
-README.md — NQComp 2027 QAOA + ML Selector
-MaxCut • QAOA benchmarking • Noise-aware evaluation • ML-based configuration selection
+README.md
 
-NQComp 2027 — QAOA + ML Selector
+NQComp 2027 QAOA + ML Selector MaxCut • QAOA benchmarking • Noise-aware evaluation • ML-based configuration selection
 
 A reproducible experimental pipeline for benchmarking **QAOA (Quantum Approximate Optimization Algorithm)** on the **MaxCut** problem and using the resulting experimental data as the foundation for a machine-learning-based QAOA configuration selector.
 
