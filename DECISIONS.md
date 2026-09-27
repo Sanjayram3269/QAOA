@@ -59,3 +59,17 @@ validation
 ```
 
 Any later methodological change to the configuration registry, noise model, seed policy, utility, budget definition, leakage rules, split strategy, or primary metric must be recorded as a new decision before affected analyses are run.
+
+
+## Final ML Selector Decisions
+
+| ID | Date | Decision | Reason |
+|---|---|---|---|
+| D19 | 2026-09-27 | Retain the existing seed-2027 split of 62 train, 13 validation, and 14 test graphs. | The test partition had already been observed; re-splitting could create post-hoc test selection. |
+| D20 | 2026-09-27 | Use the 89 graphs with complete N0/N1/N2 coverage for the primary selector analysis. | Ensures every analyzed graph has the same 12 candidates under all three conditions. |
+| D21 | 2026-09-27 | Score candidate configurations by predicted mean expected approximation ratio. | Candidate descriptors are available before selection, while target-graph outcomes remain prohibited. |
+| D22 | 2026-09-27 | Define B256/B512 as maximum shots-per-circuit feasibility constraints. | N1/N2 reuse N0 parameters, so total-execution-shot costs are not directly comparable across conditions. |
+| D23 | 2026-09-27 | Select the model by mean validation selection regret; use row RMSE only as a secondary metric. | Optimizes the actual decision objective without using test data. |
+| D24 | 2026-09-27 | Use ExtraTrees with the full pre-execution structural feature set for the frozen final model. | It achieved the lowest validation regret; removing graph structure increased validation regret. |
+| D25 | 2026-09-27 | Compare against a fixed configuration chosen separately for each noise/budget pair using training graphs only. | This is a stronger and leakage-safe baseline than one global fixed configuration. |
+| D26 | 2026-09-27 | Cluster uncertainty and paired tests by graph and treat the final gain as descriptive. | Repeated noise/budget observations share graphs, and the 14-graph confidence interval includes zero. |
