@@ -2,14 +2,15 @@ project:
   name: nqcomp-2027-qaoa-ml-selector
   problem: maxcut
   seed: 2027
-  schema_version: "1.0"
+  schema_version: "1.1"
 
+# Authoritative graph-generation settings for the frozen raw experiment.
 graphs:
   families:
     - erdos_renyi
     - random_regular
   node_counts: [10, 12, 15, 18, 20]
-  instances_per_setting: 5
+  instances_per_setting: 10
   er_probability: 0.35
   random_regular_degree: 4
 
@@ -17,6 +18,7 @@ qaoa:
   depths: [1, 2, 3]
   optimizers: [COBYLA, SPSA]
   shots: [256, 512]
+  max_optimizer_evals: 80
   max_circuit_executions: 200
   spsa_a: 0.15
   spsa_c: 0.10
@@ -52,5 +54,11 @@ exact_solver:
 reproducibility:
   graph_seed_start: 10000
   split_seed: 2027
-  feasibility_run_seeds: [20000, 20001, 20002]
-  final_run_seeds: [20000, 20001, 20002, 20003, 20004]
+  raw_qaoa_run_seeds: [1000, 1001]
+  selector_feasibility_run_seeds: [20000, 20001, 20002]
+  selector_final_run_seeds: [20000, 20001, 20002, 20003, 20004]
+
+# Frozen ML population policy:
+# 100 graphs were generated. The primary selector analysis admits only graphs
+# with complete N0/N1/N2 coverage and all 12 configurations: 89 graphs.
+# The frozen graph-level split is 62 train / 13 validation / 14 test.

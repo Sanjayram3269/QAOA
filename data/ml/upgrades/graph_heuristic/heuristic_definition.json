@@ -1,0 +1,21 @@
+{
+  "method": "training-only graph nearest-neighbour heuristic",
+  "input": "data\\ml\\splits\\ml_performance_common.csv",
+  "target": "mean_expected_approximation_ratio",
+  "graph_features": [
+    "num_nodes",
+    "num_edges",
+    "density"
+  ],
+  "k_neighbours": 5,
+  "distance": "standardized Euclidean distance",
+  "training_graphs": 62,
+  "validation_graphs": 13,
+  "test_graphs": 14,
+  "budgets": {
+    "B256": 256,
+    "B512": 512
+  },
+  "selection_rule": "Among feasible configurations, select the configuration with highest mean target performance across the K nearest training graphs for the same noise condition.",
+  "test_data_used_for_selection": false
+}
