@@ -66,7 +66,11 @@ class FeatureSet:
 
 
 FEATURE_SETS = {
-    "full": FeatureSet("full", tuple(FULL_NUMERIC), tuple(FULL_CATEGORICAL)),
+    "full": FeatureSet(
+        "full",
+        tuple(FULL_NUMERIC),
+        tuple(FULL_CATEGORICAL),
+    ),
     "without_graph_structure": FeatureSet(
         "without_graph_structure",
         tuple(CONFIG_NUMERIC),
@@ -76,6 +80,11 @@ FEATURE_SETS = {
         "without_noise_condition",
         tuple(FULL_NUMERIC),
         tuple(CONFIG_CATEGORICAL + ["graph_family"]),
+    ),
+    "without_config_id": FeatureSet(
+        "without_config_id",
+        tuple(CONFIG_NUMERIC + GRAPH_FEATURES),
+        tuple(["optimizer", "graph_family", "noise_condition"]),
     ),
 }
 
