@@ -12,8 +12,25 @@
     "N1",
     "N2"
   ],
+  "run_seeds_per_graph_config_condition": 2,
   "target": "mean_expected_approximation_ratio",
   "seed_aggregation": "mean over run_seed; std retained",
   "target_graph_outcomes_used_as_features": false,
-  "raw_files_modified": false
+  "raw_files_modified": false,
+  "coverage": {
+    "N0": {
+      "graphs": 100,
+      "rows": 2400
+    },
+    "N1": {
+      "graphs": 100,
+      "rows": 2400
+    },
+    "N2": {
+      "graphs": 100,
+      "rows": 2400
+    }
+  },
+  "primary_snapshot": true,
+  "historical_89_graph_snapshot_superseded": true
 }

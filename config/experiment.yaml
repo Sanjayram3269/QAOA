@@ -4,7 +4,7 @@ project:
   seed: 2027
   schema_version: "1.1"
 
-# Authoritative graph-generation settings for the frozen raw experiment.
+# Authoritative graph-generation settings for the current primary raw experiment.
 graphs:
   families:
     - erdos_renyi
@@ -58,7 +58,11 @@ reproducibility:
   selector_feasibility_run_seeds: [20000, 20001, 20002]
   selector_final_run_seeds: [20000, 20001, 20002, 20003, 20004]
 
-# Frozen ML population policy:
-# 100 graphs were generated. The primary selector analysis admits only graphs
-# with complete N0/N1/N2 coverage and all 12 configurations: 89 graphs.
-# The frozen graph-level split is 62 train / 13 validation / 14 test.
+# Primary ML population policy:
+# All 100 generated graphs now have complete N0/N1/N2 coverage and all 12
+# configurations. The primary graph-level split is 70 train / 15 validation /
+# 15 test using split seed 2027.
+#
+# Historical note: an earlier snapshot had only 89 complete noisy graphs and
+# used a 62 / 13 / 14 split. That historical snapshot is superseded for the
+# primary paper analysis.
