@@ -14,12 +14,12 @@
   "target": "mean_expected_approximation_ratio",
   "selection_metric": "validation_rmse",
   "selected_model": "random_forest",
-  "train_graphs": 62,
-  "validation_graphs": 13,
-  "test_graphs": 14,
+  "train_graphs": 70,
+  "validation_graphs": 15,
+  "test_graphs": 15,
   "final_test_metrics": {
-    "mae": 0.03218077689495849,
-    "rmse": 0.04036241874712239,
-    "r2": 0.26779483030174
+    "mae": 0.033898576496397714,
+    "rmse": 0.041917733215646485,
+    "r2": 0.34043257465889565
   }
 }
