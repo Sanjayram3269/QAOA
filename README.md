@@ -2,27 +2,29 @@
 
 A reproducible MaxCut benchmark and machine-learning configuration-selection pipeline for QAOA under ideal and controlled noisy execution.
 
-The project studies whether graph-aware, pre-execution machine learning can select a high-performing QAOA configuration for an unseen graph, subject to shot-feasibility budgets and noise conditions.
+The project studies whether graph-aware, pre-execution machine learning can select a high-performing QAOA configuration for an unseen graph under explicit shot budgets and noise conditions.
+
+> **Current primary snapshot:** the earlier 89-graph analysis is superseded by the completed 100-graph noisy dataset and the deterministic 70/15/15 graph-level split described below. Historical artifacts may remain in the repository for provenance, but the current paper should use the 100-graph snapshot only.
 
 ## 1. Research question
 
-For a previously unseen MaxCut graph, can a frozen ML selector choose a QAOA configuration that performs at least as well as non-ML baselines without using the target graph's measured QAOA outcomes as features?
+For a previously unseen MaxCut graph, can a frozen ML selector choose a high-performing QAOA configuration without using the target graph's measured QAOA outcomes as features, while respecting declared shot-feasibility budgets and known noise conditions?
 
 The selector operates on graph structure and configuration/context descriptors available before execution. Target-graph QAOA outcomes are excluded from the feature set.
 
-## 2. Frozen raw experiment
+## 2. Current frozen raw experiment
 
 ### Graph population
 
-- 100 deterministic graph instances were generated.
+- 100 deterministic graph instances.
 - Families: Erdős–Rényi and random-regular.
 - Node counts: 10, 12, 15, 18, 20.
 - Erdős–Rényi probability: 0.35.
 - Random-regular degree: 4.
 - Persistent graph IDs: `G0001` … `G0100`.
-- Graph-generation seed starts at 10000.
+- Two run seeds per graph/configuration/condition.
 
-The raw benchmark contains complete N0 coverage for all 100 generated graphs. N1/N2 coverage is complete through G0089. For the primary ML analysis, only graphs with complete N0/N1/N2 coverage and all 12 configurations are admitted, producing a common population of **89 graphs**.
+The current raw snapshot has **complete N0, N1, and N2 coverage for all 100 graphs**. Therefore the primary ML population is the full 100-graph set; no graph is discarded for missing noisy coverage.
 
 ### QAOA configuration space
 
@@ -36,91 +38,96 @@ The raw benchmark contains complete N0 coverage for all 100 generated graphs. N1
 | Optimizer-evaluation limit | 80 |
 | Circuit-execution limit | 200 |
 
-The canonical configuration IDs are C01–C12. The raw experiment uses two run seeds per graph/configuration/condition: 1000 and 1001.
+The canonical configuration IDs are C01–C12. Each graph/configuration/noise condition has two run seeds.
 
 ### Noise
 
 - **N0:** ideal simulation.
-- **N1:** controlled moderate depolarizing/readout noise.
-- **N2:** controlled higher depolarizing/readout noise.
+- **N1:** controlled moderate noise.
+- **N2:** controlled higher noise.
 
-For N1/N2, the experiment reuses the corresponding N0 optimized parameters rather than independently optimizing every noisy condition. This isolates configuration robustness under noise.
+For N1/N2, the corresponding N0 optimized parameters are reused rather than independently optimizing every noisy condition. This isolates configuration robustness under the controlled noise settings.
+
+### Current raw-data accounting
+
+```text
+Graphs:              100
+Configurations:       12
+Noise conditions:      3
+Run seeds:              2
+Raw observations:   7200
+Aggregated ML rows:  3600
+```
+
+The raw QAOA result files remain immutable experimental artifacts. ML transformations are written separately under `data/ml/`.
 
 ### Primary quality metric
 
-The primary quality target is the mean expected approximation ratio, retained at the seed-aggregation stage. Best-sampled performance is treated as a secondary quantity.
+The primary quality target is the mean expected approximation ratio, aggregated over the two run seeds. Best-sampled performance is retained as a secondary descriptive quantity.
 
-For supported small graphs, exact MaxCut is computed as the reference optimum.
+For these small graphs, exact MaxCut is available as the reference optimum.
 
-## 3. Frozen ML dataset and split
+## 3. Leakage-safe ML dataset and split
 
-The ML dataset is derived from the immutable raw result snapshot. The common dataset contains 89 graphs with complete N0/N1/N2 and 12-configuration coverage.
+The ML dataset is derived from the frozen raw result snapshot. The common dataset contains **100 graphs**, with complete N0/N1/N2 coverage and all 12 configurations.
 
-The split is performed **at graph level**, using seed 2027:
+The split is deterministic and performed **at graph level**, using seed 2027:
 
-| Split | Graphs |
+| Split | Graphs | Rows |
+|---|---:|---:|
+| Train | 70 | 2520 |
+| Validation | 15 | 540 |
+| Test | 15 | 540 |
+| **Total** | **100** | **3600** |
+
+Each graph appears in exactly one partition. There is zero graph overlap across train, validation, and test. Because every graph has the same three noise conditions and twelve configurations, each split contains balanced N0/N1/N2 coverage.
+
+The final selector is chosen using validation data only, then refit on train + validation. The test set is evaluated once after the model and feature set are frozen.
+
+## 4. Current final ML selector
+
+The current final selector uses **Extra Trees** with pre-execution graph-structure and configuration/context features, including graph size, density, degree statistics, clustering/connectivity descriptors, spectral descriptors, QAOA depth, optimizer, shots, configuration ID, graph family, and noise condition.
+
+Model selection is based on **mean validation selection regret**, aligned with the actual configuration-selection task. Row-level MAE/RMSE/R² are secondary prediction diagnostics.
+
+The current final test evaluation contains **90 graph × noise × budget cases** (15 unseen graphs × 3 noise conditions × 2 shot budgets).
+
+### Current frozen test summary
+
+| Method | Mean expected approximation ratio |
 |---|---:|
-| Train | 62 |
-| Validation | 13 |
-| Test | 14 |
-| Total | 89 |
+| Uniform-random expectation | 0.694513 |
+| Training-only fixed baseline | 0.707455 |
+| **ML selector (Extra Trees)** | **0.711856** |
+| Feasible oracle | 0.730775 |
 
-There is zero graph overlap between train, validation, and test partitions.
-
-The final selector is selected using validation data only, then refit on train + validation. The test set is evaluated once after the model and feature set are frozen.
-
-The frozen ML input is `data/ml/splits/ml_performance_common.csv`, whose SHA-256 is recorded in `data/ml/final_selector/analysis_manifest.json`.
-
-## 4. Final ML selector
-
-The final selector uses **Extra Trees** with pre-execution graph-structure and configuration/context features, including graph size, density, degree statistics, clustering/connectivity descriptors, spectral descriptors, QAOA depth, optimizer, shots, configuration ID, graph family, and noise condition.
-
-Model selection is based on **mean validation selection regret**, the metric aligned with the actual configuration-selection task. Row-level prediction MAE/RMSE/R² are reported as secondary diagnostics.
-
-Final analysis provenance is recorded in:
+Additional current test metrics:
 
 ```text
-data/ml/final_selector/analysis_manifest.json
+ML − fixed                     +0.004401
+Relative gain                   +0.622148%
+Mean feasible-oracle regret     0.018918
+Oracle selection accuracy       22.2222%
+Oracle top-3 accuracy           61.1111%
 ```
 
-Key frozen final-test metrics:
-
-```text
-ML mean                         0.702228
-Fixed baseline mean             0.700960
-Random expected mean            0.689134
-Oracle mean                     0.724351
-ML − fixed                      +0.001269
-Relative gain                   +0.181%
-Mean regret                     0.022123
-Oracle selection accuracy       17.86%
-Oracle top-3 accuracy            58.33%
-```
-
-The small aggregate gain is reported as an empirical result rather than as a claim of universal superiority. Performance is also reported separately by budget and noise condition.
+These are empirical results on the frozen 15-graph test partition. They should not be presented as universal superiority claims.
 
 ## 5. Baselines and robustness analyses
 
-The study includes multiple reference strategies:
+The study retains multiple reference strategies and diagnostic analyses:
 
-1. **Training-only fixed configuration baseline.** The fixed choice is determined without using test outcomes.
-2. **Random configuration baseline.** Seeded random selection from feasible configurations.
-3. **Oracle reference.** Best measured test configuration per graph/condition, used only as an unattainable upper reference.
-4. **Graph nearest-neighbour heuristic.** A training-only, k=5 standardized graph-feature heuristic using number of nodes, edges, and density.
-5. **Configuration-ID ablation.** Tests the effect of including configuration identity among the selector features.
-6. **Model and feature ablations.** Validation-only comparisons and permutation importance are retained in the repository.
-7. **Paired ML-vs-fixed statistical analysis.** The frozen global C06 baseline is compared on exactly the same 42 graph/noise observations using a Wilcoxon signed-rank test.
+1. **Training-only fixed configuration baseline:** selected without using test outcomes.
+2. **Random configuration baseline:** seeded random selection from feasible candidates.
+3. **Feasible oracle:** best measured feasible test configuration per graph/noise/budget case, used only as an upper reference.
+4. **Graph nearest-neighbour heuristic:** training-only structural similarity baseline.
+5. **Configuration-ID ablation:** evaluates the contribution of explicit configuration identity.
+6. **Model comparison:** Ridge, Random Forest, Extra Trees, and Histogram Gradient Boosting.
+7. **Feature ablations:** validation-only removal of feature groups.
+8. **Selector-aware permutation importance:** validation-only interpretability analysis.
+9. **Graph-clustered uncertainty/statistics:** accounts for repeated noise/budget observations belonging to the same graph.
 
-The paired C06 analysis reports:
-
-```text
-ALL: ML mean 0.708474 vs C06 0.698668
-Mean paired difference: +0.009806
-Wilcoxon p-value: 0.004625
-Paired Cohen's d: 0.392
-```
-
-Noise-specific results are retained in `data/ml/final_analysis/paired_ml_vs_fixed_statistics.csv`. The paper should distinguish this global-C06 paired analysis from the stronger task-aligned fixed-baseline comparison used by the final selector, where the fixed configuration is selected separately for each noise/budget case using training graphs only.
+The older global-C06 paired analysis and the earlier 89-graph selector are retained only as historical/provenance artifacts. They must not be mixed with the current 100-graph primary results in the paper.
 
 ## 6. Reproducibility and leakage controls
 
@@ -136,9 +143,9 @@ The project preserves:
 - explicit N0/N1/N2 condition labels;
 - training-only fixed baselines;
 - oracle results only as reference upper bounds;
-- SHA-256 provenance for the final ML input;
-- bootstrap and permutation-importance settings;
-- paper-ready CSV tables and figures.
+- SHA-256 provenance for derived ML inputs;
+- bootstrap/permutation settings;
+- paper-ready CSV tables and vector/raster figures.
 
 ## 7. Key files
 
@@ -159,7 +166,8 @@ scripts/
 ├── statistical_analysis.py
 ├── analyze_ml_vs_fixed_paired.py
 ├── graph_heuristic_baseline.py
-└── validate_ml_data.py
+├── validate_ml_data.py
+└── generate_paper_outputs.py
 
 data/ml/
 ├── dataset_manifest.json
@@ -175,30 +183,34 @@ data/ml/
     └── graph_heuristic/
 ```
 
-## 8. Reproducing the final selector analysis
+## 8. Reproducing the current analysis
 
 From the repository root:
 
 ```bash
 python scripts/validate_ml_data.py
+python scripts/build_ml_dataset.py
+python scripts/create_ml_splits.py
 python scripts/finalize_ml_selector.py
+python scripts/train_baselines.py
 python scripts/statistical_analysis.py
 python scripts/analyze_ml_vs_fixed_paired.py
 python scripts/graph_heuristic_baseline.py
+python scripts/generate_paper_outputs.py
 ```
 
-The final selector analysis does not modify the canonical raw QAOA CSVs.
+The analysis scripts do not modify the canonical raw QAOA CSVs.
 
 ## 9. Research status
 
-The experimental evidence is now frozen for paper writing. Numerical results should not be regenerated or tuned against the test set while drafting the paper.
+The **100-graph experiment and current ML selector analysis are the primary paper snapshot**. The paper should use only this current snapshot for headline results.
 
-The final paper should report the complete methodology, the 89-graph common population, the 62/13/14 graph-level split, the 12-configuration search space, N0/N1/N2 conditions, resource budgets, Extra Trees selection criterion, non-ML baselines, ablations, uncertainty/statistical analyses, and the observed limitations.
+The paper should report the complete methodology, the 100-graph common population, the 70/15/15 graph-level split, the 12-configuration search space, N0/N1/N2 conditions, shot budgets, Extra Trees selection criterion, non-ML baselines, ablations, uncertainty/statistical analyses, and limitations.
 
-In particular, the paper should not overstate the aggregate ML gain: the contribution is the **resource-aware, noise-aware, graph-level, leakage-controlled configuration-selection framework and its empirical evaluation**, with the final test performance reported transparently across conditions.
+The observed ML gain is modest in aggregate. The contribution should therefore be framed around the reproducible **resource-aware, noise-aware, graph-level, leakage-controlled configuration-selection framework and its empirical evaluation**, rather than an unsupported claim of universal performance superiority.
 
 ## 10. Repository
 
 GitHub: https://github.com/Sanjayram3269/QAOA
 
-**NQComp 2027 — QAOA benchmarking + noise-aware evaluation + resource-aware ML configuration selection**
+**NQComp 2027 — QAOA benchmarking + controlled-noise evaluation + resource-aware ML configuration selection**
