@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#070a12" />
+  <meta name="description" content="NQComp 2027 Quantum Intelligence — resource-aware QAOA configuration intelligence." />
+  <title>NQComp Quantum Intelligence</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+</head>
+<body>
+  <div id="app">
+    <aside class="sidebar" id="sidebar">
+      <div class="brand">
+        <div class="brand-mark"><span>Q</span><i></i></div>
+        <div><strong>NQComp</strong><small>Quantum Intelligence</small></div>
+      </div>
+      <div class="dataset-pill"><span class="live-dot"></span><span>FROZEN RESEARCH DATA</span></div>
+      <nav id="nav">
+        <div class="nav-label">WORKSPACE</div>
+        <button class="nav-item active" data-page="overview"><span>⌂</span>Overview</button>
+        <button class="nav-item" data-page="explorer"><span>◈</span>Experiment Explorer</button>
+        <button class="nav-item" data-page="performance"><span>◒</span>Performance</button>
+        <button class="nav-item" data-page="graphs"><span>◎</span>Graph Observatory</button>
+        <button class="nav-item" data-page="configs"><span>⌘</span>Configuration Lab</button>
+        <div class="nav-label">ROBUSTNESS</div>
+        <button class="nav-item" data-page="noise"><span>≋</span>Noise &amp; Robustness</button>
+        <button class="nav-item" data-page="budget"><span>◷</span>Budget Analysis</button>
+        <div class="nav-label">ML INTELLIGENCE</div>
+        <button class="nav-item" data-page="selector"><span>✦</span>ML Selector</button>
+        <button class="nav-item" data-page="features"><span>⌁</span>Feature Intelligence</button>
+        <button class="nav-item" data-page="ablation"><span>△</span>Ablation Lab</button>
+        <button class="nav-item" data-page="validation"><span>▦</span>Model Validation</button>
+        <div class="nav-label">RESEARCH</div>
+        <button class="nav-item" data-page="stats"><span>σ</span>Statistical Evidence</button>
+        <button class="nav-item" data-page="repro"><span>✓</span>Reproducibility</button>
+        <button class="nav-item" data-page="method"><span>?</span>Methodology</button>
+      </nav>
+      <div class="sidebar-foot">
+        <div class="mini-status"><span class="status-orb"></span><div><b>Pipeline verified</b><small>Frozen artifact surface</small></div></div>
+        <div class="version">NQCOMP / 2027 · UI 1.0</div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <button class="icon-btn mobile-only" id="menuBtn" aria-label="Open menu">☰</button>
+        <div class="breadcrumbs"><span>NQCOMP 2027</span><b>/</b><strong id="pageCrumb">Overview</strong></div>
+        <div class="top-actions">
+          <div class="global-search"><span>⌕</span><input id="globalSearch" placeholder="Search graphs, configs, pages..." /></div>
+          <button class="icon-btn" id="themeBtn" title="Toggle visual mode">◐</button>
+          <button class="icon-btn" id="refreshBtn" title="Reload frozen artifacts">↻</button>
+        </div>
+      </header>
+
+      <div class="content">
+        <section class="page" id="page-overview"></section>
+        <section class="page hidden" id="page-explorer"></section>
+        <section class="page hidden" id="page-performance"></section>
+        <section class="page hidden" id="page-graphs"></section>
+        <section class="page hidden" id="page-configs"></section>
+        <section class="page hidden" id="page-noise"></section>
+        <section class="page hidden" id="page-budget"></section>
+        <section class="page hidden" id="page-selector"></section>
+        <section class="page hidden" id="page-features"></section>
+        <section class="page hidden" id="page-ablation"></section>
+        <section class="page hidden" id="page-validation"></section>
+        <section class="page hidden" id="page-stats"></section>
+        <section class="page hidden" id="page-repro"></section>
+        <section class="page hidden" id="page-method"></section>
+      </div>
+    </main>
+  </div>
+
+  <div class="toast" id="toast"></div>
+  <div class="modal-backdrop hidden" id="modalBackdrop"><div class="modal" id="modal"></div></div>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
