@@ -1,7 +1,8 @@
 import { defineConfig } from 'vite';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const dashboardDir = __dirname;
+const dashboardDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(dashboardDir, '..');
 
 export default defineConfig({
@@ -9,15 +10,11 @@ export default defineConfig({
   server: {
     port: 5173,
     strictPort: false,
-    fs: {
-      allow: [repoRoot]
-    }
+    fs: { allow: [repoRoot] }
   },
   build: {
     outDir: path.resolve(dashboardDir, 'dist'),
     emptyOutDir: true,
-    rollupOptions: {
-      input: path.resolve(dashboardDir, 'index.html')
-    }
+    rollupOptions: { input: path.resolve(dashboardDir, 'index.html') }
   }
 });
