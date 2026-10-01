@@ -30,7 +30,13 @@ npm install
 npm run dev
 ```
 
-Open the Vite URL shown in the terminal. Because the dashboard reads files one directory above `dashboard/`, it should be served by Vite rather than opened with `file://`.
+The Vite server uses the repository root so the dashboard can read the authoritative research artifacts without duplicating them. Open:
+
+```text
+http://localhost:5173/dashboard/
+```
+
+Do not open `dashboard/index.html` with `file://`; the browser must receive the app through Vite so the CSV artifacts can be fetched correctly.
 
 ## Production build
 
