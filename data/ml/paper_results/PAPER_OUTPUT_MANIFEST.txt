@@ -1,0 +1,64 @@
+NQComp 2027 — Paper Output Bundle
+==================================================
+
+Source: data/ml/final_selector/
+All outputs are derived from frozen analysis results.
+No model retraining or test-set tuning performed.
+
+TABLES:
+  T10_fixed_baselines.csv
+  T10_fixed_baselines.tex
+  T11_graph_features.csv
+  T11_graph_features.tex
+  T12_experimental_metadata.csv
+  T12_experimental_metadata.tex
+  T1_main_results.csv
+  T1_main_results.tex
+  T2_budget_results.csv
+  T2_budget_results.tex
+  T3_noise_results.csv
+  T3_noise_results.tex
+  T4_budget_noise_results.csv
+  T4_budget_noise_results.tex
+  T5_validation_model_comparison.csv
+  T5_validation_model_comparison.tex
+  T6_feature_ablation.csv
+  T6_feature_ablation.tex
+  T7_permutation_importance.csv
+  T7_permutation_importance.tex
+  T8_statistical_tests.csv
+  T8_statistical_tests.tex
+  T9_selected_configurations.csv
+  T9_selected_configurations.tex
+
+FIGURES:
+  F10_ml_gain_over_fixed.pdf
+  F10_ml_gain_over_fixed.png
+  F10_ml_gain_over_fixed.svg
+  F1_main_method_comparison.pdf
+  F1_main_method_comparison.png
+  F1_main_method_comparison.svg
+  F2_budget_comparison.pdf
+  F2_budget_comparison.png
+  F2_budget_comparison.svg
+  F3_noise_comparison.pdf
+  F3_noise_comparison.png
+  F3_noise_comparison.svg
+  F4_validation_model_comparison.pdf
+  F4_validation_model_comparison.png
+  F4_validation_model_comparison.svg
+  F5_feature_ablation.pdf
+  F5_feature_ablation.png
+  F5_feature_ablation.svg
+  F6_permutation_importance.pdf
+  F6_permutation_importance.png
+  F6_permutation_importance.svg
+  F7_regret_distribution.pdf
+  F7_regret_distribution.png
+  F7_regret_distribution.svg
+  F8_ml_vs_oracle.pdf
+  F8_ml_vs_oracle.png
+  F8_ml_vs_oracle.svg
+  F9_configuration_selection_frequency.pdf
+  F9_configuration_selection_frequency.png
+  F9_configuration_selection_frequency.svg

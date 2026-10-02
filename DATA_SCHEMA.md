@@ -1,9 +1,8 @@
-DATA_SCHEMA.md
 # NQComp 2027 — Data Schema
 
 ## 1. Purpose
 
-This document defines the structure and interpretation of the raw QAOA experimental result data.
+This document defines the structure and interpretation of the QAOA experimental result data and the derived ML dataset.
 
 Canonical raw files:
 
@@ -12,7 +11,7 @@ data/results/n0_results.csv
 data/results/noisy_results.csv
 ```
 
-Raw files contain per-evaluation observations and are treated as immutable experimental artifacts after a snapshot is frozen.
+Raw files are treated as immutable experimental artifacts after a snapshot is frozen. Derived ML data are stored separately under `data/ml/`.
 
 ## 2. Raw Observation
 
@@ -22,9 +21,7 @@ The raw experiment records one observation for:
 graph × QAOA configuration × run seed × noise condition
 ```
 
-For N0 the condition is ideal/noiseless.
-
-For N1/N2 the corresponding noise condition is explicitly recorded.
+N0 is ideal/noiseless. N1 and N2 are explicitly recorded controlled-noise conditions.
 
 ## 3. Configuration Dimensions
 
@@ -36,7 +33,7 @@ optimizer ∈ {COBYLA, SPSA}
 shots ∈ {256, 512}
 ```
 
-The configuration IDs are C01-C12.
+Configuration IDs are C01–C12.
 
 ## 4. Seeds
 
@@ -45,14 +42,14 @@ The current frozen dataset uses two run seeds per graph/configuration/condition.
 Therefore:
 
 ```text
-12 configurations × 2 seeds = 24 rows
+12 configurations × 2 seeds = 24 raw rows
 ```
 
 per graph and condition.
 
-No three-seed claim should be made for the current raw dataset.
+## 5. Current Dataset Coverage
 
-## 5. Dataset Coverage
+The current completed snapshot has complete coverage for all 100 graphs under all three conditions.
 
 ### N0
 
@@ -67,44 +64,38 @@ G0001 → G0100
 ### N1
 
 ```text
-89 graphs
-G0001 → G0089
+100 graphs
+G0001 → G0100
 12 configurations
 2 seeds
-2136 rows
+2400 rows
 ```
 
 ### N2
 
 ```text
-89 graphs
-G0001 → G0089
+100 graphs
+G0001 → G0100
 12 configurations
 2 seeds
-2136 rows
+2400 rows
 ```
 
 Combined raw data:
 
 ```text
-6672 rows
+7200 rows
 ```
 
-## 6. Current Missing Coverage
-
-The noisy dataset does not currently contain N1/N2 observations for:
+After seed aggregation:
 
 ```text
-G0090 → G0100
+100 graphs × 12 configurations × 3 conditions = 3600 ML rows
 ```
 
-These graphs are not treated as failures or zero-performance observations.
+## 6. Core Raw Fields
 
-They are simply outside the current noisy dataset snapshot.
-
-## 7. Core Raw Fields
-
-The current schema includes fields representing:
+The schema includes fields representing:
 
 ### Identification
 - experiment_id
@@ -148,7 +139,7 @@ The current schema includes fields representing:
 
 `optimal_parameters` may be retained as a diagnostic field but is not an ML input.
 
-## 8. Approximation Ratio
+## 7. Approximation Ratio
 
 The primary QAOA quality quantity is expected approximation ratio:
 
@@ -160,9 +151,9 @@ expected_cut / exact_optimum
 
 Best sampled approximation ratio is retained as a secondary descriptive metric.
 
-## 9. Seed Aggregation
+## 8. Seed Aggregation
 
-When ML preprocessing aggregates repeated runs, aggregation should occur after separating:
+ML preprocessing aggregates repeated runs after separating:
 
 ```text
 graph_id
@@ -170,34 +161,37 @@ config_id
 noise_condition
 ```
 
-The raw two-seed observations must remain available and unchanged.
+The two-seed raw observations remain available and unchanged. The primary ML target is the mean expected approximation ratio.
 
-The aggregation rule must be documented by the ML preprocessing implementation.
+## 9. Resource Budgets
 
-## 10. Resource Budgets
+The selector uses shot-feasibility budgets derived from the declared configuration shots:
 
-If resource-budget labels are derived, they must be constructed from the measured raw execution data rather than creating duplicate QAOA runs.
+```text
+B256: candidate shots per circuit <= 256
+B512: candidate shots per circuit <= 512
+```
 
-Budget definitions must be consistent with the frozen experiment decisions.
+Budget labels are feasibility constraints rather than duplicated quantum experiments.
 
-## 11. ML Leakage Policy
+## 10. ML Leakage Policy
 
 The ML selector can use only information available before selecting a configuration for the target graph.
 
 Allowed categories include:
-- graph features
-- known noise condition
-- declared resource constraint
+- graph features;
+- known noise condition;
+- declared configuration/resource descriptors.
 
 Forbidden leakage sources include:
-- target graph QAOA performance
-- exact optimum of the target graph
-- configuration outcome metrics
-- utility calculated from target-graph outcomes
-- runtime measured after executing a target configuration
-- post-execution measurements
+- target-graph QAOA performance;
+- exact target-graph optimum;
+- configuration outcome metrics;
+- utility calculated from target-graph outcomes;
+- runtime measured after executing a target configuration;
+- post-execution measurements.
 
-## 12. Graph-Level Splitting
+## 11. Graph-Level Splitting
 
 The split unit is the graph.
 
@@ -209,73 +203,89 @@ VALIDATION
 TEST
 ```
 
-All available observations for the same graph must remain in that same split.
+All observations for the same graph remain in that partition across configurations, noise conditions, and seeds.
 
-This rule applies across N0, N1, N2, configurations, and seeds.
+Current split:
 
-## 13. Derived ML Data
+```text
+100 common graphs
+70 train
+15 validation
+15 test
+seed = 2027
+```
 
-Derived data must be stored separately from the raw results.
+This produces:
 
-Recommended location:
+```text
+2520 train rows
+540 validation rows
+540 test rows
+3600 rows total
+```
+
+with zero graph overlap.
+
+## 12. Derived ML Data
+
+Derived data are stored separately from raw results:
 
 ```text
 data/ml/
 ```
 
-Examples:
+Important current files include:
 
 ```text
-data/ml/features.csv
-data/ml/targets.csv
-data/ml/predictions.csv
+data/ml/ml_performance.csv
+data/ml/splits/ml_performance_common.csv
+data/ml/final_selector/
+data/ml/final_analysis/
+data/ml/paper_results/
 ```
 
-Do not overwrite the raw experimental CSV files.
+Raw experimental CSVs must never be overwritten by ML transformations.
 
-## 14. Integrity Checks
+## 13. Integrity Checks
 
-Before ML processing, verify:
+For the current complete snapshot, verify:
 
 ```text
 N0 = 2400 rows, 100 graphs
-N1 = 2136 rows, 89 graphs
-N2 = 2136 rows, 89 graphs
+N1 = 2400 rows, 100 graphs
+N2 = 2400 rows, 100 graphs
+TOTAL = 7200 raw rows
+ML = 3600 aggregated rows
 ```
 
 Also verify:
-- N1 and N2 cover the same 89 graph IDs
-- each noisy graph has 48 rows total
-- each condition has 24 rows per graph
-- no unexpected duplicate `(graph_id, config_id, noise_condition, run_seed)` keys exist
-- run_status values are valid
-- required fields are present
+- all three conditions cover G0001-G0100;
+- each graph/condition has 12 configurations;
+- each configuration/condition has two run seeds;
+- no unexpected duplicate `(graph_id, config_id, noise_condition, run_seed)` keys exist;
+- required fields are present;
+- graph-level split overlap is zero.
 
-## 15. Missing Data Policy
+## 14. Missing Data Policy
 
-A missing graph/condition is not automatically a failed experiment.
+The current primary snapshot has no missing graph/condition coverage. Any future extension or correction must be versioned explicitly rather than silently changing this snapshot.
 
-For the current snapshot, G0090-G0100 are outside N1/N2 coverage.
+## 15. Versioning
 
-ML analyses requiring noisy labels must either:
-- operate on the 89 available noisy graphs, or
-- use a later dataset version that includes the additional noisy evaluations.
+Raw-data corrections or extensions should create a new explicit dataset version.
 
-The selected policy must be stated in the analysis.
+Do not silently edit historical experimental rows.
 
-## 16. Versioning
-
-Raw data corrections or extensions should create a new explicit dataset version.
-
-Do not silently edit old experimental rows.
-
-## 17. Reproducibility
+## 16. Reproducibility
 
 The raw data should remain traceable to:
-- graph manifest
-- graph-generation seeds
-- configuration registry
-- run seeds
-- noise model
-- experiment runner
-- code revision
+- graph manifest;
+- graph-generation seeds;
+- configuration registry;
+- run seeds;
+- noise model;
+- experiment runner;
+- code revision;
+- derived-dataset manifest;
+- graph split manifest;
+- final selector analysis manifest.

@@ -1,0 +1,2 @@
+scope,graphs,cases,ml_mean,fixed_mean,random_expected_mean,oracle_mean,ml_minus_fixed,relative_gain_percent,mean_regret,oracle_selection_accuracy,oracle_top3_accuracy
+ALL,15,90,0.7118562770823458,0.7074548600077908,0.6945132937065821,0.730774763267702,0.0044014170745548,0.6221481147936984,0.0189184861853563,0.2222222222222222,0.6111111111111112
